@@ -15,7 +15,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,8 +37,8 @@ class PartServiceTest {
     void setUp() {
         samplePart = new Part("Óleo Motor 5W30", "1 litro", new BigDecimal("45.90"), 20, "L");
         DomainTestFixtures.setId(samplePart, 1L);
-        DomainTestFixtures.setField(samplePart, "createdAt", LocalDateTime.now());
-        DomainTestFixtures.setField(samplePart, "updatedAt", LocalDateTime.now());
+        DomainTestFixtures.setField(samplePart, "createdAt", OffsetDateTime.now());
+        DomainTestFixtures.setField(samplePart, "updatedAt", OffsetDateTime.now());
     }
 
     @Test

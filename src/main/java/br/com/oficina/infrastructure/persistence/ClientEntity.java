@@ -1,8 +1,9 @@
 package br.com.oficina.infrastructure.persistence;
 
+import br.com.oficina.domain.model.ClientStatus;
 import br.com.oficina.domain.model.ClientType;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +31,10 @@ public class ClientEntity {
     @Column(name = "client_type", nullable = false, length = 2)
     private ClientType clientType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private ClientStatus status;
+
     @Column(length = 100)
     private String email;
 
@@ -37,10 +42,10 @@ public class ClientEntity {
     private String phone;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private final List<VehicleEntity> vehicles = new ArrayList<>();
@@ -50,13 +55,16 @@ public class ClientEntity {
 
     @PrePersist
     void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
+        if (status == null) {
+            status = ClientStatus.ACTIVE;
+        }
     }
 
     @PreUpdate
     void preUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -70,14 +78,17 @@ public class ClientEntity {
     public ClientType getClientType() { return clientType; }
     public void setClientType(ClientType clientType) { this.clientType = clientType; }
 
+    public ClientStatus getStatus() { return status; }
+    public void setStatus(ClientStatus status) { this.status = status; }
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 
     public List<VehicleEntity> getVehicles() { return vehicles; }
 }

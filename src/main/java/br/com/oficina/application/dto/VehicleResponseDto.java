@@ -1,7 +1,7 @@
 package br.com.oficina.application.dto;
 
 import br.com.oficina.domain.model.Vehicle;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public record VehicleResponseDto(
     Long id,
@@ -11,7 +11,7 @@ public record VehicleResponseDto(
     Integer productionYear,
     Long clientId,
     String clientName,
-    LocalDateTime createdAt
+    OffsetDateTime createdAt
 ) {
     public static VehicleResponseDto from(Vehicle v) {
         return new VehicleResponseDto(

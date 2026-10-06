@@ -3,7 +3,7 @@ package br.com.oficina.application.dto;
 import br.com.oficina.domain.model.WorkOrderStatus;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public record PublicWorkOrderDto(
@@ -13,11 +13,11 @@ public record PublicWorkOrderDto(
     String vehicleBrand,
     String vehicleModel,
     BigDecimal totalCost,
-    LocalDateTime createdAt,
-    LocalDateTime sentForApprovalAt,
-    LocalDateTime approvedAt,
-    LocalDateTime finishedAt,
-    LocalDateTime deliveredAt,
+    OffsetDateTime createdAt,
+    OffsetDateTime sentForApprovalAt,
+    OffsetDateTime approvedAt,
+    OffsetDateTime finishedAt,
+    OffsetDateTime deliveredAt,
     List<String> serviceNames,
     List<String> partNames
 ) {

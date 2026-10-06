@@ -2,7 +2,7 @@ package br.com.oficina.application.dto;
 
 import br.com.oficina.domain.model.WorkOrderStatus;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Visão pública e mínima do acompanhamento da OS, devolvida pelo endpoint aberto
@@ -12,11 +12,11 @@ public record PublicWorkOrderStatusDto(
     String orderNumber,
     WorkOrderStatus status,
     String statusLabel,
-    LocalDateTime createdAt,
-    LocalDateTime sentForApprovalAt,
-    LocalDateTime approvedAt,
-    LocalDateTime finishedAt,
-    LocalDateTime deliveredAt
+    OffsetDateTime createdAt,
+    OffsetDateTime sentForApprovalAt,
+    OffsetDateTime approvedAt,
+    OffsetDateTime finishedAt,
+    OffsetDateTime deliveredAt
 ) {
     public static PublicWorkOrderStatusDto from(WorkOrderResponseDto dto) {
         return new PublicWorkOrderStatusDto(
