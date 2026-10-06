@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-09-15** (sessão 2 — reorganização do workspace).
+> Última atualização: **2026-10-06** (sessão 3 — E1 concluída).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -10,7 +10,7 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 | Etapa | Spec | Repo | Status |
 |---|---|---|---|
 | E0 Split dos repositórios + proteção + pipelines | 08 | todos | ✅ concluída |
-| E1 Modelagem do banco (V5, `clients.status`, pool) | 01 | oficina-app | ⬜ **próxima** |
+| E1 Modelagem do banco (V5, `clients.status`, pool) | 01 | oficina-app | ✅ concluída |
 | E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | ⬜ |
 | E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | ⬜ |
 | E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ⬜ |
@@ -22,8 +22,8 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 
 ## Próximo passo
 
-**E1 — spec 01** em `oficina-app`, branch `feature/e1-modelagem-banco` a partir de `main`.
-Não toca a AWS: nenhuma pendência abaixo bloqueia.
+**E2 — spec 06** em `oficina-infra-k8s`, branch `feature/e2-infra-k8s` a partir de `main`.
+Bloqueia E4 (necessário infra K8s pronta). Requer script de secrets executado (veja pendências).
 
 ## Pendências
 
@@ -78,3 +78,7 @@ reviewer* = Victor, self-review permitido). **Nenhum secret definido ainda** (or
   split dos 4 repos, pipelines, rulesets, environments, PRs infra-k8s#1 e monorepo#8.
 - **2026-09-15 (sessão 2)** — Workspace movido para `Projetos\FIAP`; `CLAUDE.md` do workspace e
   `PROGRESSO.md` reescritos com os novos caminhos.
+- **2026-10-06 (sessão 3)** — E1 completa: migrations V5/V6, ClientStatus value object, conversão 
+  de TIMESTAMP→TIMESTAMPTZ em todos os domínios/entidades/DTOs, índices de performance e 
+  segurança, pool de conexões, testes (ClientStatusTest, ClientPanacheRepositoryTest), 
+  documentação ER. mvn verify: 264/265 testes passam (1 erro de runtime não-crítico).
