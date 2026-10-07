@@ -75,6 +75,7 @@ class WorkOrderServiceTest {
             WorkOrder arg = inv.getArgument(0);
             if (arg.getId() == null) {
                 DomainTestFixtures.setId(arg, 42L);
+                DomainTestFixtures.setField(arg, "orderNumber", WorkOrder.orderNumberFor(42L));
             }
             return arg;
         });

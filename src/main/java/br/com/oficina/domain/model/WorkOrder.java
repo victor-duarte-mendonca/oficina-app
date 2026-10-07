@@ -87,6 +87,11 @@ public class WorkOrder {
 
     // ===== Identidade =====
 
+    /** Formato canônico do número da OS, derivado do id gerado na persistência. */
+    public static String orderNumberFor(Long id) {
+        return "OS-" + String.format("%06d", id);
+    }
+
     public void assignOrderNumber(String orderNumber) {
         if (this.orderNumber != null) {
             throw new BusinessException("Número da OS já foi atribuído: " + this.orderNumber);

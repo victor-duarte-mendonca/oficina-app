@@ -19,7 +19,12 @@ END
 $$;
 
 -- Permissões de banco e schema
-GRANT CONNECT ON DATABASE oficina_db TO oficina_auth_ro;
+-- Nome do banco dinâmico: independe do DB_NAME do ambiente (RDS, Dev Services, etc.).
+DO $$
+BEGIN
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO oficina_auth_ro', current_database());
+END
+$$;
 GRANT USAGE ON SCHEMA public TO oficina_auth_ro;
 
 -- SELECT apenas nas colunas necessárias para autenticação (R3)

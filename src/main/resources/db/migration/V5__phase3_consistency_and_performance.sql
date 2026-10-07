@@ -37,8 +37,7 @@ ALTER TABLE work_orders
     ALTER COLUMN cancelled_at TYPE TIMESTAMPTZ USING cancelled_at AT TIME ZONE 'UTC';
 
 ALTER TABLE app_users
-    ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC',
-    ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC';
+    ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
 
 -- ===================================================
 -- 2. Novo campo: clients.status
@@ -79,8 +78,8 @@ ALTER TABLE work_orders
 ALTER TABLE work_orders
     ADD CONSTRAINT ck_work_orders_total_cost CHECK (total_cost >= 0),
     ADD CONSTRAINT ck_work_orders_status CHECK (status IN (
-        'RECEIVED', 'IN_DIAGNOSIS', 'AWAITING_APPROVAL', 'APPROVED',
-        'IN_PROGRESS', 'FINISHED', 'DELIVERED', 'CANCELLED'
+        'RECEIVED', 'IN_DIAGNOSIS', 'AWAITING_APPROVAL', 'IN_EXECUTION',
+        'FINISHED', 'DELIVERED', 'CANCELLED'
     ));
 
 ALTER TABLE work_order_parts

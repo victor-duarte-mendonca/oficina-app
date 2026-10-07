@@ -37,7 +37,7 @@ class ClientPanacheRepositoryTest {
         repository.persistAndFlush(entity);
 
         // Act
-        Optional<ClientEntity> found = repository.find("cpf_cnpj = ?1 AND status = ?2", "11144477735", ClientStatus.ACTIVE).firstResultOptional();
+        Optional<ClientEntity> found = repository.find("cpfCnpj = ?1 AND status = ?2", "11144477735", ClientStatus.ACTIVE).firstResultOptional();
 
         // Assert
         assertThat(found).isPresent();
@@ -55,7 +55,7 @@ class ClientPanacheRepositoryTest {
         repository.persistAndFlush(entity);
 
         // Act
-        Optional<ClientEntity> found = repository.find("cpf_cnpj = ?1 AND status = ?2", "22255588844", ClientStatus.ACTIVE).firstResultOptional();
+        Optional<ClientEntity> found = repository.find("cpfCnpj = ?1 AND status = ?2", "22255588844", ClientStatus.ACTIVE).firstResultOptional();
 
         // Assert
         assertThat(found).isEmpty();
@@ -71,7 +71,7 @@ class ClientPanacheRepositoryTest {
         repository.persistAndFlush(entity);
 
         // Act
-        Optional<ClientEntity> found = repository.find("cpf_cnpj = ?1 AND status = ?2", "33366699955", ClientStatus.ACTIVE).firstResultOptional();
+        Optional<ClientEntity> found = repository.find("cpfCnpj = ?1 AND status = ?2", "33366699955", ClientStatus.ACTIVE).firstResultOptional();
 
         // Assert
         assertThat(found).isEmpty();
@@ -101,7 +101,7 @@ class ClientPanacheRepositoryTest {
         repository.persist(entity);
         repository.flush();
 
-        Optional<ClientEntity> found = repository.find("cpf_cnpj = ?1 AND status = ?2", cpfCnpj, ClientStatus.ACTIVE).firstResultOptional();
+        Optional<ClientEntity> found = repository.find("cpfCnpj = ?1 AND status = ?2", cpfCnpj, ClientStatus.ACTIVE).firstResultOptional();
 
         if (shouldBeFound) {
             assertThat(found).isPresent();

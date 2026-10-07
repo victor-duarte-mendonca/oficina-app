@@ -41,7 +41,7 @@ erDiagram
         varchar order_number UK "NOT NULL"
         bigint client_id FK
         bigint vehicle_id FK
-        varchar status "RECEIVED|IN_DIAGNOSIS|AWAITING_APPROVAL|APPROVED|IN_PROGRESS|FINISHED|DELIVERED|CANCELLED"
+        varchar status "RECEIVED|IN_DIAGNOSIS|AWAITING_APPROVAL|IN_EXECUTION|FINISHED|DELIVERED|CANCELLED"
         numeric total_cost "CHECK >= 0"
         varchar approval_token "segredo de uso único"
         timestamptz created_at
