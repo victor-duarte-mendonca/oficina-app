@@ -2,7 +2,7 @@ package br.com.oficina.application.dto;
 
 import br.com.oficina.domain.model.Client;
 import br.com.oficina.domain.model.ClientType;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public record ClientResponseDto(
     Long id,
@@ -11,7 +11,7 @@ public record ClientResponseDto(
     ClientType clientType,
     String email,
     String phone,
-    LocalDateTime createdAt
+    OffsetDateTime createdAt
 ) {
     public static ClientResponseDto from(Client c) {
         return new ClientResponseDto(

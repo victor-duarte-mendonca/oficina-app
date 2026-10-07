@@ -7,7 +7,7 @@ import br.com.oficina.domain.exception.ResourceNotFoundException;
 import br.com.oficina.domain.valueobject.ApprovalToken;
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,16 +28,16 @@ public class WorkOrder {
     private WorkOrderStatus status;
     private String notes;
     private BigDecimal totalCost;
-    private LocalDateTime createdAt;
-    private LocalDateTime diagnosisStartedAt;
-    private LocalDateTime sentForApprovalAt;
-    private LocalDateTime approvedAt;
-    private LocalDateTime executionStartedAt;
-    private LocalDateTime finishedAt;
-    private LocalDateTime deliveredAt;
-    private LocalDateTime cancelledAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime diagnosisStartedAt;
+    private OffsetDateTime sentForApprovalAt;
+    private OffsetDateTime approvedAt;
+    private OffsetDateTime executionStartedAt;
+    private OffsetDateTime finishedAt;
+    private OffsetDateTime deliveredAt;
+    private OffsetDateTime cancelledAt;
     private ApprovalToken approvalToken;
-    private LocalDateTime approvalTokenConsumedAt;
+    private OffsetDateTime approvalTokenConsumedAt;
     private final List<WorkOrderPart> parts = new ArrayList<>();
     private final List<WorkOrderServiceItem> services = new ArrayList<>();
 
@@ -47,7 +47,7 @@ public class WorkOrder {
         this.notes = notes;
         this.status = WorkOrderStatus.RECEIVED;
         this.totalCost = BigDecimal.ZERO;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now();
     }
 
     private WorkOrder() {
@@ -57,10 +57,10 @@ public class WorkOrder {
     /** Reconstrói o aggregate a partir da persistência (uso exclusivo do mapper). */
     public static WorkOrder rehydrate(
             Long id, String orderNumber, CustomerSnapshot customer, VehicleSnapshot vehicle,
-            WorkOrderStatus status, String notes, BigDecimal totalCost, LocalDateTime createdAt,
-            LocalDateTime diagnosisStartedAt, LocalDateTime sentForApprovalAt, LocalDateTime approvedAt,
-            LocalDateTime executionStartedAt, LocalDateTime finishedAt, LocalDateTime deliveredAt,
-            LocalDateTime cancelledAt, String approvalToken, LocalDateTime approvalTokenConsumedAt,
+            WorkOrderStatus status, String notes, BigDecimal totalCost, OffsetDateTime createdAt,
+            OffsetDateTime diagnosisStartedAt, OffsetDateTime sentForApprovalAt, OffsetDateTime approvedAt,
+            OffsetDateTime executionStartedAt, OffsetDateTime finishedAt, OffsetDateTime deliveredAt,
+            OffsetDateTime cancelledAt, String approvalToken, OffsetDateTime approvalTokenConsumedAt,
             List<WorkOrderPart> parts, List<WorkOrderServiceItem> services) {
         WorkOrder wo = new WorkOrder();
         wo.id = id;
@@ -86,6 +86,11 @@ public class WorkOrder {
     }
 
     // ===== Identidade =====
+
+    /** Formato canônico do número da OS, derivado do id gerado na persistência. */
+    public static String orderNumberFor(Long id) {
+        return "OS-" + String.format("%06d", id);
+    }
 
     public void assignOrderNumber(String orderNumber) {
         if (this.orderNumber != null) {
@@ -151,7 +156,7 @@ public class WorkOrder {
     public void startDiagnosis() {
         requireStatus(WorkOrderStatus.RECEIVED);
         status = WorkOrderStatus.IN_DIAGNOSIS;
-        diagnosisStartedAt = LocalDateTime.now();
+        diagnosisStartedAt = OffsetDateTime.now();
     }
 
     /**
@@ -163,7 +168,7 @@ public class WorkOrder {
         requireStatus(WorkOrderStatus.IN_DIAGNOSIS);
         recalculateTotalCost();
         status = WorkOrderStatus.AWAITING_APPROVAL;
-        sentForApprovalAt = LocalDateTime.now();
+        sentForApprovalAt = OffsetDateTime.now();
         approvalToken = ApprovalToken.generate();
         approvalTokenConsumedAt = null;
     }
@@ -194,32 +199,32 @@ public class WorkOrder {
             throw new BusinessException(
                 "Este link de aprovação já foi utilizado. Solicite um novo à oficina.");
         }
-        approvalTokenConsumedAt = LocalDateTime.now();
+        approvalTokenConsumedAt = OffsetDateTime.now();
     }
 
     public void approve() {
         requireStatus(WorkOrderStatus.AWAITING_APPROVAL);
         status = WorkOrderStatus.IN_EXECUTION;
-        approvedAt = LocalDateTime.now();
-        executionStartedAt = LocalDateTime.now();
+        approvedAt = OffsetDateTime.now();
+        executionStartedAt = OffsetDateTime.now();
     }
 
     public void reject() {
         requireStatus(WorkOrderStatus.AWAITING_APPROVAL);
         status = WorkOrderStatus.CANCELLED;
-        cancelledAt = LocalDateTime.now();
+        cancelledAt = OffsetDateTime.now();
     }
 
     public void complete() {
         requireStatus(WorkOrderStatus.IN_EXECUTION);
         status = WorkOrderStatus.FINISHED;
-        finishedAt = LocalDateTime.now();
+        finishedAt = OffsetDateTime.now();
     }
 
     public void deliver() {
         requireStatus(WorkOrderStatus.FINISHED);
         status = WorkOrderStatus.DELIVERED;
-        deliveredAt = LocalDateTime.now();
+        deliveredAt = OffsetDateTime.now();
     }
 
     public void cancel() {
@@ -229,7 +234,7 @@ public class WorkOrder {
             );
         }
         status = WorkOrderStatus.CANCELLED;
-        cancelledAt = LocalDateTime.now();
+        cancelledAt = OffsetDateTime.now();
     }
 
     public void recalculateTotalCost() {
@@ -270,17 +275,17 @@ public class WorkOrder {
     public BigDecimal getTotalCost() { return totalCost; }
     /** Orçamento da OS, gerado automaticamente a partir de peças e serviços incluídos. */
     public BigDecimal getBudget() { return totalCost; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getDiagnosisStartedAt() { return diagnosisStartedAt; }
-    public LocalDateTime getSentForApprovalAt() { return sentForApprovalAt; }
-    public LocalDateTime getApprovedAt() { return approvedAt; }
-    public LocalDateTime getExecutionStartedAt() { return executionStartedAt; }
-    public LocalDateTime getFinishedAt() { return finishedAt; }
-    public LocalDateTime getDeliveredAt() { return deliveredAt; }
-    public LocalDateTime getCancelledAt() { return cancelledAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getDiagnosisStartedAt() { return diagnosisStartedAt; }
+    public OffsetDateTime getSentForApprovalAt() { return sentForApprovalAt; }
+    public OffsetDateTime getApprovedAt() { return approvedAt; }
+    public OffsetDateTime getExecutionStartedAt() { return executionStartedAt; }
+    public OffsetDateTime getFinishedAt() { return finishedAt; }
+    public OffsetDateTime getDeliveredAt() { return deliveredAt; }
+    public OffsetDateTime getCancelledAt() { return cancelledAt; }
     /** Token de aprovação vigente, ou {@code null} se a OS nunca foi enviada para aprovação. */
     public String getApprovalToken() { return approvalToken == null ? null : approvalToken.value(); }
-    public LocalDateTime getApprovalTokenConsumedAt() { return approvalTokenConsumedAt; }
+    public OffsetDateTime getApprovalTokenConsumedAt() { return approvalTokenConsumedAt; }
     public List<WorkOrderPart> getParts() { return Collections.unmodifiableList(parts); }
     public List<WorkOrderServiceItem> getServices() { return Collections.unmodifiableList(services); }
 }

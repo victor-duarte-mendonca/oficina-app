@@ -12,7 +12,7 @@ public class ClientMapper {
 
     public Client toDomain(ClientEntity e) {
         return Client.rehydrate(
-            e.getId(), e.getName(), e.getCpfCnpj(), e.getClientType(),
+            e.getId(), e.getName(), e.getCpfCnpj(), e.getClientType(), e.getStatus(),
             e.getEmail(), e.getPhone(), e.getCreatedAt(), e.getUpdatedAt());
     }
 
@@ -27,6 +27,7 @@ public class ClientMapper {
         e.setName(d.getName());
         e.setCpfCnpj(d.getCpfCnpj());
         e.setClientType(d.getClientType());
+        e.setStatus(d.getStatus());
         e.setEmail(d.getEmail());
         e.setPhone(d.getPhone());
     }

@@ -13,7 +13,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,8 +36,8 @@ class ServiceItemServiceTest {
         sampleItem = new ServiceItem("Troca de Óleo", "Troca completa de óleo e filtro",
             new BigDecimal("120.00"), 30);
         DomainTestFixtures.setId(sampleItem, 1L);
-        DomainTestFixtures.setField(sampleItem, "createdAt", LocalDateTime.now());
-        DomainTestFixtures.setField(sampleItem, "updatedAt", LocalDateTime.now());
+        DomainTestFixtures.setField(sampleItem, "createdAt", OffsetDateTime.now());
+        DomainTestFixtures.setField(sampleItem, "updatedAt", OffsetDateTime.now());
     }
 
     @Test

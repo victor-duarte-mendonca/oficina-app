@@ -1,7 +1,7 @@
 package br.com.oficina.domain.model;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Serviço oferecido pela oficina — modelo de domínio puro, sem dependência de
@@ -16,8 +16,8 @@ public class ServiceItem {
     private BigDecimal basePrice;
     private Integer estimatedDurationMinutes;
     private Boolean active = true;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 
     public ServiceItem(String name, String description, BigDecimal basePrice, Integer estimatedDurationMinutes) {
         this.name = name;
@@ -34,7 +34,7 @@ public class ServiceItem {
     /** Reconstrói o serviço a partir da persistência (uso exclusivo do mapper). */
     public static ServiceItem rehydrate(Long id, String name, String description, BigDecimal basePrice,
                                         Integer estimatedDurationMinutes, Boolean active,
-                                        LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                        OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         ServiceItem s = new ServiceItem();
         s.id = id;
         s.name = name;
@@ -72,6 +72,6 @@ public class ServiceItem {
     public BigDecimal getBasePrice() { return basePrice; }
     public Integer getEstimatedDurationMinutes() { return estimatedDurationMinutes; }
     public Boolean getActive() { return active; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

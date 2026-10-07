@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,8 +36,8 @@ class ClientServiceTest {
     void setUp() {
         sampleClient = new Client("João Silva", "11144477735", ClientType.PF, "joao@example.com", "11999999999");
         DomainTestFixtures.setId(sampleClient, 1L);
-        DomainTestFixtures.setField(sampleClient, "createdAt", LocalDateTime.now());
-        DomainTestFixtures.setField(sampleClient, "updatedAt", LocalDateTime.now());
+        DomainTestFixtures.setField(sampleClient, "createdAt", OffsetDateTime.now());
+        DomainTestFixtures.setField(sampleClient, "updatedAt", OffsetDateTime.now());
     }
 
     @Test

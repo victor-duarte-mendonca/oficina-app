@@ -6,7 +6,7 @@ import br.com.oficina.testsupport.DomainTestFixtures;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,7 +21,7 @@ class PartMapperTest {
 
     @Test
     void toDomain_shouldMapAllFields() {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         PartEntity e = new PartEntity();
         DomainTestFixtures.setId(e, 3L);
         e.setName("Óleo 5W30");
@@ -54,8 +54,9 @@ class PartMapperTest {
 
     @Test
     void toNewEntity_shouldCopyBusinessFields_leavingIdentityAndVersionToJpa() {
+        OffsetDateTime now = OffsetDateTime.now();
         Part d = Part.rehydrate(50L, "Filtro", "Filtro de ar", new BigDecimal("30.00"),
-            7, "UN", 1, PartType.PECA, false, 9L, LocalDateTime.now(), LocalDateTime.now());
+            7, "UN", 1, PartType.PECA, false, 9L, now, now);
 
         PartEntity e = mapper.toNewEntity(d);
 

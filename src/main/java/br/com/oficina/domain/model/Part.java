@@ -2,7 +2,7 @@ package br.com.oficina.domain.model;
 
 import br.com.oficina.domain.exception.BusinessException;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Peça ou insumo com controle de estoque — modelo de domínio puro, sem dependência
@@ -21,8 +21,8 @@ public class Part {
     private PartType partType = PartType.PECA;
     private Boolean active = true;
     private Long version;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 
     public Part(String name, String description, BigDecimal unitPrice, Integer stockQuantity, String unit) {
         this(name, description, unitPrice, stockQuantity, unit, 0, PartType.PECA);
@@ -46,7 +46,7 @@ public class Part {
     /** Reconstrói a peça a partir da persistência (uso exclusivo do mapper). */
     public static Part rehydrate(Long id, String name, String description, BigDecimal unitPrice,
                                  Integer stockQuantity, String unit, Integer minimumStock, PartType partType,
-                                 Boolean active, Long version, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                 Boolean active, Long version, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         Part p = new Part();
         p.id = id;
         p.name = name;
@@ -116,6 +116,6 @@ public class Part {
     public PartType getPartType() { return partType; }
     public Boolean getActive() { return active; }
     public Long getVersion() { return version; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

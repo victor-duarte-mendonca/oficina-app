@@ -16,7 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,8 +42,8 @@ class VehicleServiceTest {
 
         vehicle = new Vehicle("ABC1234", "Toyota", "Corolla", 2020, 1L);
         DomainTestFixtures.setId(vehicle, 1L);
-        DomainTestFixtures.setField(vehicle, "createdAt", LocalDateTime.now());
-        DomainTestFixtures.setField(vehicle, "updatedAt", LocalDateTime.now());
+        DomainTestFixtures.setField(vehicle, "createdAt", OffsetDateTime.now());
+        DomainTestFixtures.setField(vehicle, "updatedAt", OffsetDateTime.now());
     }
 
     @Test

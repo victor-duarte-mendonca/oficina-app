@@ -1,11 +1,12 @@
 package br.com.oficina.infrastructure.persistence;
 
 import br.com.oficina.domain.model.Client;
+import br.com.oficina.domain.model.ClientStatus;
 import br.com.oficina.domain.model.ClientType;
 import br.com.oficina.testsupport.DomainTestFixtures;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,12 +22,13 @@ class ClientMapperTest {
 
     @Test
     void toDomain_shouldMapAllFields() {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         ClientEntity e = new ClientEntity();
         DomainTestFixtures.setId(e, 7L);
         e.setName("Maria Silva");
         e.setCpfCnpj("11144477735");
         e.setClientType(ClientType.PF);
+        e.setStatus(ClientStatus.ACTIVE);
         e.setEmail("maria@x.com");
         e.setPhone("11999998888");
         DomainTestFixtures.setField(e, "createdAt", now);
@@ -38,6 +40,7 @@ class ClientMapperTest {
         assertThat(d.getName()).isEqualTo("Maria Silva");
         assertThat(d.getCpfCnpj()).isEqualTo("11144477735");
         assertThat(d.getClientType()).isEqualTo(ClientType.PF);
+        assertThat(d.getStatus()).isEqualTo(ClientStatus.ACTIVE);
         assertThat(d.getEmail()).isEqualTo("maria@x.com");
         assertThat(d.getPhone()).isEqualTo("11999998888");
         assertThat(d.getCreatedAt()).isEqualTo(now);
@@ -46,14 +49,16 @@ class ClientMapperTest {
 
     @Test
     void toNewEntity_shouldCopyBusinessFields_leavingIdentityToJpa() {
-        Client d = Client.rehydrate(99L, "João", "52998224725", ClientType.PF,
-            "joao@x.com", "1130001111", LocalDateTime.now(), LocalDateTime.now());
+        OffsetDateTime now = OffsetDateTime.now();
+        Client d = Client.rehydrate(99L, "João", "52998224725", ClientType.PF, ClientStatus.ACTIVE,
+            "joao@x.com", "1130001111", now, now);
 
         ClientEntity e = mapper.toNewEntity(d);
 
         assertThat(e.getName()).isEqualTo("João");
         assertThat(e.getCpfCnpj()).isEqualTo("52998224725");
         assertThat(e.getClientType()).isEqualTo(ClientType.PF);
+        assertThat(e.getStatus()).isEqualTo(ClientStatus.ACTIVE);
         assertThat(e.getEmail()).isEqualTo("joao@x.com");
         assertThat(e.getPhone()).isEqualTo("1130001111");
         // Identidade e timestamps não são responsabilidade do mapper (JPA os gera).
@@ -68,6 +73,7 @@ class ClientMapperTest {
         source.setName("Empresa X");
         source.setCpfCnpj("11222333000181");
         source.setClientType(ClientType.PJ);
+        source.setStatus(ClientStatus.ACTIVE);
         source.setEmail("contato@empresa.com");
         source.setPhone("1140004000");
 
@@ -76,6 +82,7 @@ class ClientMapperTest {
         assertThat(back.getName()).isEqualTo(source.getName());
         assertThat(back.getCpfCnpj()).isEqualTo(source.getCpfCnpj());
         assertThat(back.getClientType()).isEqualTo(source.getClientType());
+        assertThat(back.getStatus()).isEqualTo(source.getStatus());
         assertThat(back.getEmail()).isEqualTo(source.getEmail());
         assertThat(back.getPhone()).isEqualTo(source.getPhone());
     }

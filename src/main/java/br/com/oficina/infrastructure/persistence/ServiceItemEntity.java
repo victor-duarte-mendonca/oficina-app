@@ -2,7 +2,7 @@ package br.com.oficina.infrastructure.persistence;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Entidade de persistência do serviço. Mapeia a tabela {@code service_items} e isola
@@ -32,23 +32,23 @@ public class ServiceItemEntity {
     private Boolean active = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     public ServiceItemEntity() {
     }
 
     @PrePersist
     void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     @PreUpdate
     void preUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -70,6 +70,6 @@ public class ServiceItemEntity {
     public Boolean getActive() { return active; }
     public void setActive(Boolean active) { this.active = active; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

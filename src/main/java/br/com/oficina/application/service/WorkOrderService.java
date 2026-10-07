@@ -113,7 +113,6 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
 
         WorkOrder wo = new WorkOrder(snapshotOf(client), snapshotOf(vehicle), dto.notes());
         wo = workOrderRepository.save(wo);
-        wo.assignOrderNumber("OS-" + String.format("%06d", wo.getId()));
 
         if (dto.services() != null) {
             for (WorkOrderServiceDto s : dto.services()) {
