@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-06** (sessão 3 — E1 concluída).
+> Última atualização: **2026-10-07** (sessão 4 — E1 corrigida, homolog alinhada, E2 iniciada).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -22,14 +22,16 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 
 ## Próximo passo
 
-**E2 — spec 06** em `oficina-infra-k8s`, branch `feature/e2-infra-k8s` a partir de `main`.
-Bloqueia E4 (necessário infra K8s pronta). Requer script de secrets executado (veja pendências).
+**E2 — spec 06** em `oficina-infra-k8s`, branch `feature/e2-infra-k8s` a partir de `homolog`, PR para `homolog`.
+Em andamento (PR aberto). Bloqueia E4 (necessário infra K8s pronta). O `apply` exige o script de secrets executado.
+
+**Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
 
 ## Pendências
 
 **Do usuário**
-- [ ] Mergear [oficina-infra-k8s#1](https://github.com/victor-duarte-mendonca/oficina-infra-k8s/pull/1) — script `scripts/set-aws-session-secrets.sh` + README + `.gitattributes`
-- [ ] Mergear o PR deste arquivo em `oficina-app` (`chore/progresso-fase3`)
+- [x] Mergear oficina-infra-k8s#1 (script de segredos)
+- [x] Alinhar `homolog` com `main` (oficina-app#3, oficina-infra-k8s#4)
 - [ ] Rodar `oficina-infra-k8s/scripts/set-aws-session-secrets.sh` com as credenciais da sessão Academy — **só antes de E2** (primeiro `terraform apply`)
 - [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
