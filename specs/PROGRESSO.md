@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-07** (sessão 4 — E1 corrigida, homolog alinhada, E2 iniciada).
+> Última atualização: **2026-10-07** (sessão 4 — E1 corrigida, homolog alinhada, E2 preparada; pausa por credenciais AWS expiradas).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -22,8 +22,23 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 
 ## Próximo passo
 
-**E2 — spec 06** em `oficina-infra-k8s`, branch `feature/e2-infra-k8s` a partir de `homolog`, PR para `homolog`.
-Em andamento (PR aberto). Bloqueia E4 (necessário infra K8s pronta). O `apply` exige o script de secrets executado.
+**E2 — spec 06** em `oficina-infra-k8s`. **Não iniciada no código**: só a branch local `feature/e2-infra-k8s` (a partir de `origin/homolog`, vazia) existe. PR da E2 vai para `homolog`.
+Bloqueia E4 (precisa da infra K8s pronta). O `apply` exige credenciais da sessão Academy.
+
+**Ao retomar (ordem):**
+1. Usuário: reabrir o AWS Academy (credenciais anteriores invalidaram) e rodar `scripts/set-aws-session-secrets.sh`; definir `ALLOWED_CIDR`.
+2. Claude: ler `specs/06-infra-k8s-terraform.md` e implementar o escopo abaixo.
+3. Claude: `terraform fmt`/`validate` local (v1.15.8 instalado; sem `tflint`/`trivy` — ficam para o CI), commit, PR para `homolog`.
+
+**Plano de implementação já decidido (sessão 4)** — `oficina-infra-k8s`:
+- Remover `db_password`/`db_instance_class` e o SG `rds` (RDS vive em infra-database; o SG de ingresso 5432 será criado lá a partir do SSM `k3s_security_group_id`).
+- Workspaces `hml`/`prod` via `locals` (instance_type t3.small/t3.medium, volume 20 GiB); prefixo de nomes `oficina-<workspace>` (key pair e SG colidiriam entre stacks); `default_tags.Environment = workspace`.
+- `backend.tf`: `workspace_key_prefix = "oficina/infra-k8s"`, `key = "terraform.tfstate"` (S3 grava em `<prefix>/<workspace>/terraform.tfstate`; spec pede `<workspace>.tfstate` — desvio mínimo a registrar).
+- `security_groups.tf`: porta 80 também para as faixas do API Gateway (`data "aws_ip_ranges"`, `aws_vpc_security_group_ingress_rule` com `for_each`); atenção ao limite de 60 regras por SG.
+- `ssm_outputs.tf`: 6 parâmetros `/oficina/<env>/{vpc_id,private_subnet_ids,k3s_security_group_id,k3s_eip,ecr_repository_url,application_url}`.
+- `observability.tf` (nri-bundle): **adiar para E7** — o helm provider precisa do kubeconfig de um cluster que ainda não existe no `plan`. Confirmar com o usuário.
+- Pipeline `terraform.yml`: `validate` (+tflint, trivy config), `plan` com comentário no PR, `apply` por branch (homolog→hml, main→prod, environments `homologacao`/`producao`), `destroy` via `workflow_dispatch` com confirmação digitada + varredura de órfãos por tag.
+- README: diagrama Mermaid, pré-requisitos, comandos, tabela de custo.
 
 **Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
 
@@ -32,7 +47,10 @@ Em andamento (PR aberto). Bloqueia E4 (necessário infra K8s pronta). O `apply` 
 **Do usuário**
 - [x] Mergear oficina-infra-k8s#1 (script de segredos)
 - [x] Alinhar `homolog` com `main` (oficina-app#3, oficina-infra-k8s#4)
-- [ ] Rodar `oficina-infra-k8s/scripts/set-aws-session-secrets.sh` com as credenciais da sessão Academy — **só antes de E2** (primeiro `terraform apply`)
+- [ ] **Reabrir o AWS Academy** (credenciais da sessão 4 invalidaram) e rodar `oficina-infra-k8s/scripts/set-aws-session-secrets.sh` — necessário para `plan`/`apply` da E2
+- [ ] Definir o secret `ALLOWED_CIDR` (seu IP público /32; org-level, spec 08 §5) antes do primeiro `plan`
+- [ ] Confirmar que o bucket `victor-duarte-mendonca-oficina-tfstate` existe na conta Academy atual (senão recriar; bootstrap manual fora do módulo)
+- [ ] Decidir: `observability.tf` fica na E7 (recomendado) ou entra na E2
 - [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
 
@@ -92,3 +110,7 @@ reviewer* = Victor, self-review permitido). **Nenhum secret definido ainda** (or
   de `IN_EXECUTION`), V6 (nome do banco fixo), placeholder Flyway `lambda-ro-password` × `${lambda_ro_password}`,
   `order_number` NOT NULL, cast `LocalDateTime`→`OffsetDateTime` em `averageExecutionTimeMinutes`.
   mvn test: 265/265. Docker 29 + Testcontainers 1.20.1 exige `api.version=1.44` em `~/.docker-java.properties`.
+- **2026-10-07 (sessão 4, continuação)** — `homolog` alinhada com `main` nos 2 repos defasados
+  (oficina-app#3, oficina-infra-k8s#4; auth-lambda e infra-database já iguais); `CLAUDE.md` do workspace
+  agora manda feature → `homolog` → `main`. E2: spec lida e plano fechado (ver "Próximo passo"); nenhum
+  Terraform escrito. Sessão encerrada porque as credenciais AWS Academy invalidaram.
