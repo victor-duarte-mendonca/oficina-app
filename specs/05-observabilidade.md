@@ -132,7 +132,7 @@ FROM Metric SINCE 14 days ago TIMESERIES 1 day FACET origin
 
 -- Tempo médio de execução por status (Diagnóstico, Execução, Finalização)
 SELECT average(oficina_work_order_status_duration_seconds)
-FROM Metric WHERE status IN ('IN_DIAGNOSIS','IN_PROGRESS','FINISHED')
+FROM Metric WHERE status IN ('IN_DIAGNOSIS','IN_EXECUTION','FINISHED')
 SINCE 7 days ago TIMESERIES FACET status
 
 -- Erros e falhas nas integrações

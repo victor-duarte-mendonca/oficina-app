@@ -1,6 +1,6 @@
 package br.com.oficina.domain.model;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Cliente da oficina — modelo de domínio puro, sem dependência de framework de
@@ -13,15 +13,17 @@ public class Client {
     private String name;
     private String cpfCnpj;
     private ClientType clientType;
+    private ClientStatus status;
     private String email;
     private String phone;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 
     public Client(String name, String cpfCnpj, ClientType clientType, String email, String phone) {
         this.name = name;
         this.cpfCnpj = cpfCnpj;
         this.clientType = clientType;
+        this.status = ClientStatus.ACTIVE;
         this.email = email;
         this.phone = phone;
     }
@@ -32,12 +34,14 @@ public class Client {
 
     /** Reconstrói o cliente a partir da persistência (uso exclusivo do mapper). */
     public static Client rehydrate(Long id, String name, String cpfCnpj, ClientType clientType,
-                                   String email, String phone, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                   ClientStatus status, String email, String phone,
+                                   OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         Client c = new Client();
         c.id = id;
         c.name = name;
         c.cpfCnpj = cpfCnpj;
         c.clientType = clientType;
+        c.status = status;
         c.email = email;
         c.phone = phone;
         c.createdAt = createdAt;
@@ -57,8 +61,9 @@ public class Client {
     public String getName() { return name; }
     public String getCpfCnpj() { return cpfCnpj; }
     public ClientType getClientType() { return clientType; }
+    public ClientStatus getStatus() { return status; }
     public String getEmail() { return email; }
     public String getPhone() { return phone; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

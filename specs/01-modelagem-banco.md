@@ -15,7 +15,7 @@ O PDF exige justificativa formal. O texto abaixo é o conteúdo do RFC correspon
 (`rfc/0002-escolha-do-banco-de-dados.md`, spec 09).
 
 **Natureza do domínio.** O núcleo é a Ordem de Serviço: uma máquina de estados
-(`RECEIVED → IN_DIAGNOSIS → AWAITING_APPROVAL → APPROVED → IN_PROGRESS → FINISHED → DELIVERED`, com
+(`RECEIVED → IN_DIAGNOSIS → AWAITING_APPROVAL → IN_EXECUTION → FINISHED → DELIVERED`, com
 `CANCELLED` transversal) que agrega itens de serviço e peças, debita estoque e calcula valor total.
 Três características decidem o modelo de persistência:
 

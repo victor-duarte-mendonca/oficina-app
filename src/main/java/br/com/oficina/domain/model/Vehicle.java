@@ -1,6 +1,6 @@
 package br.com.oficina.domain.model;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Veículo da oficina — modelo de domínio puro, sem dependência de framework de
@@ -18,8 +18,8 @@ public class Vehicle {
     private Integer productionYear;
     private Long clientId;
     private String clientName;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 
     public Vehicle(String licensePlate, String brand, String model, Integer productionYear, Long clientId) {
         this.licensePlate = licensePlate;
@@ -36,7 +36,7 @@ public class Vehicle {
     /** Reconstrói o veículo a partir da persistência (uso exclusivo do mapper). */
     public static Vehicle rehydrate(Long id, String licensePlate, String brand, String model,
                                     Integer productionYear, Long clientId, String clientName,
-                                    LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                    OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         Vehicle v = new Vehicle();
         v.id = id;
         v.licensePlate = licensePlate;
@@ -65,6 +65,6 @@ public class Vehicle {
     public Integer getProductionYear() { return productionYear; }
     public Long getClientId() { return clientId; }
     public String getClientName() { return clientName; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

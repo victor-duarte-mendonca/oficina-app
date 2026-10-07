@@ -3,7 +3,7 @@ package br.com.oficina.infrastructure.persistence;
 import br.com.oficina.domain.model.WorkOrderStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,37 +42,37 @@ public class WorkOrderEntity {
     private BigDecimal totalCost = BigDecimal.ZERO;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @Column(name = "diagnosis_started_at")
-    private LocalDateTime diagnosisStartedAt;
+    private OffsetDateTime diagnosisStartedAt;
 
     @Column(name = "sent_for_approval_at")
-    private LocalDateTime sentForApprovalAt;
+    private OffsetDateTime sentForApprovalAt;
 
     @Column(name = "approved_at")
-    private LocalDateTime approvedAt;
+    private OffsetDateTime approvedAt;
 
     @Column(name = "execution_started_at")
-    private LocalDateTime executionStartedAt;
+    private OffsetDateTime executionStartedAt;
 
     @Column(name = "finished_at")
-    private LocalDateTime finishedAt;
+    private OffsetDateTime finishedAt;
 
     @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
+    private OffsetDateTime deliveredAt;
 
     @Column(name = "cancelled_at")
-    private LocalDateTime cancelledAt;
+    private OffsetDateTime cancelledAt;
 
     @Column(name = "approval_token", length = 64)
     private String approvalToken;
 
     @Column(name = "approval_token_consumed_at")
-    private LocalDateTime approvalTokenConsumedAt;
+    private OffsetDateTime approvalTokenConsumedAt;
 
     @OneToMany(mappedBy = "workOrder", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private final List<WorkOrderPartEntity> parts = new ArrayList<>();
@@ -85,13 +85,13 @@ public class WorkOrderEntity {
 
     @PrePersist
     void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     @PreUpdate
     void preUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -114,34 +114,34 @@ public class WorkOrderEntity {
     public BigDecimal getTotalCost() { return totalCost; }
     public void setTotalCost(BigDecimal totalCost) { this.totalCost = totalCost; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
 
-    public LocalDateTime getDiagnosisStartedAt() { return diagnosisStartedAt; }
-    public void setDiagnosisStartedAt(LocalDateTime v) { this.diagnosisStartedAt = v; }
+    public OffsetDateTime getDiagnosisStartedAt() { return diagnosisStartedAt; }
+    public void setDiagnosisStartedAt(OffsetDateTime v) { this.diagnosisStartedAt = v; }
 
-    public LocalDateTime getSentForApprovalAt() { return sentForApprovalAt; }
-    public void setSentForApprovalAt(LocalDateTime v) { this.sentForApprovalAt = v; }
+    public OffsetDateTime getSentForApprovalAt() { return sentForApprovalAt; }
+    public void setSentForApprovalAt(OffsetDateTime v) { this.sentForApprovalAt = v; }
 
-    public LocalDateTime getApprovedAt() { return approvedAt; }
-    public void setApprovedAt(LocalDateTime v) { this.approvedAt = v; }
+    public OffsetDateTime getApprovedAt() { return approvedAt; }
+    public void setApprovedAt(OffsetDateTime v) { this.approvedAt = v; }
 
-    public LocalDateTime getExecutionStartedAt() { return executionStartedAt; }
-    public void setExecutionStartedAt(LocalDateTime v) { this.executionStartedAt = v; }
+    public OffsetDateTime getExecutionStartedAt() { return executionStartedAt; }
+    public void setExecutionStartedAt(OffsetDateTime v) { this.executionStartedAt = v; }
 
-    public LocalDateTime getFinishedAt() { return finishedAt; }
-    public void setFinishedAt(LocalDateTime v) { this.finishedAt = v; }
+    public OffsetDateTime getFinishedAt() { return finishedAt; }
+    public void setFinishedAt(OffsetDateTime v) { this.finishedAt = v; }
 
-    public LocalDateTime getDeliveredAt() { return deliveredAt; }
-    public void setDeliveredAt(LocalDateTime v) { this.deliveredAt = v; }
+    public OffsetDateTime getDeliveredAt() { return deliveredAt; }
+    public void setDeliveredAt(OffsetDateTime v) { this.deliveredAt = v; }
 
-    public LocalDateTime getCancelledAt() { return cancelledAt; }
-    public void setCancelledAt(LocalDateTime v) { this.cancelledAt = v; }
+    public OffsetDateTime getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(OffsetDateTime v) { this.cancelledAt = v; }
 
     public String getApprovalToken() { return approvalToken; }
     public void setApprovalToken(String v) { this.approvalToken = v; }
 
-    public LocalDateTime getApprovalTokenConsumedAt() { return approvalTokenConsumedAt; }
-    public void setApprovalTokenConsumedAt(LocalDateTime v) { this.approvalTokenConsumedAt = v; }
+    public OffsetDateTime getApprovalTokenConsumedAt() { return approvalTokenConsumedAt; }
+    public void setApprovalTokenConsumedAt(OffsetDateTime v) { this.approvalTokenConsumedAt = v; }
 
     public List<WorkOrderPartEntity> getParts() { return parts; }
     public List<WorkOrderServiceItemEntity> getServices() { return services; }

@@ -5,7 +5,7 @@ import br.com.oficina.testsupport.DomainTestFixtures;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,7 +18,7 @@ class ServiceItemMapperTest {
 
     @Test
     void toDomain_shouldMapAllFields() {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         ServiceItemEntity e = new ServiceItemEntity();
         DomainTestFixtures.setId(e, 4L);
         e.setName("Troca de Óleo");
@@ -43,8 +43,9 @@ class ServiceItemMapperTest {
 
     @Test
     void toNewEntity_shouldCopyBusinessFields_leavingIdentityToJpa() {
+        OffsetDateTime now = OffsetDateTime.now();
         ServiceItem d = ServiceItem.rehydrate(80L, "Alinhamento", null,
-            new BigDecimal("90.00"), 45, false, LocalDateTime.now(), LocalDateTime.now());
+            new BigDecimal("90.00"), 45, false, now, now);
 
         ServiceItemEntity e = mapper.toNewEntity(d);
 

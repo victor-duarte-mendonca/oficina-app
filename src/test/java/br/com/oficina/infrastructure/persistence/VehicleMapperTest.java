@@ -9,7 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -31,7 +31,7 @@ class VehicleMapperTest {
 
     @Test
     void toDomain_shouldMapFieldsIncludingClientProjection() {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         ClientEntity owner = new ClientEntity();
         DomainTestFixtures.setId(owner, 10L);
         owner.setName("Dono do Carro");
@@ -64,8 +64,9 @@ class VehicleMapperTest {
         DomainTestFixtures.setId(ref, 10L);
         when(em.getReference(ClientEntity.class, 10L)).thenReturn(ref);
 
+        OffsetDateTime now = OffsetDateTime.now();
         Vehicle d = Vehicle.rehydrate(99L, "XYZ9A88", "Honda", "Civic", 2021, 10L,
-            "Dono", LocalDateTime.now(), LocalDateTime.now());
+            "Dono", now, now);
 
         VehicleEntity e = mapper.toNewEntity(d);
 
@@ -86,8 +87,9 @@ class VehicleMapperTest {
         when(em.getReference(ClientEntity.class, 20L)).thenReturn(ref);
 
         VehicleEntity managed = new VehicleEntity();
+        OffsetDateTime now = OffsetDateTime.now();
         Vehicle d = Vehicle.rehydrate(1L, "AAA1A11", "Fiat", "Uno", 2015, 20L,
-            "Outro Dono", LocalDateTime.now(), LocalDateTime.now());
+            "Outro Dono", now, now);
 
         mapper.applyState(managed, d);
 

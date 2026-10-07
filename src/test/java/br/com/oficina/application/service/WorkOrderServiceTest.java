@@ -21,7 +21,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,7 +61,7 @@ class WorkOrderServiceTest {
             null);
         DomainTestFixtures.setId(workOrder, 1L);
         DomainTestFixtures.setField(workOrder, "orderNumber", "OS-000001");
-        DomainTestFixtures.setField(workOrder, "createdAt", LocalDateTime.now());
+        DomainTestFixtures.setField(workOrder, "createdAt", OffsetDateTime.now());
 
         part = new Part("Óleo Motor", null, new BigDecimal("45.90"), 10, "L");
         DomainTestFixtures.setId(part, 1L);
@@ -75,6 +75,7 @@ class WorkOrderServiceTest {
             WorkOrder arg = inv.getArgument(0);
             if (arg.getId() == null) {
                 DomainTestFixtures.setId(arg, 42L);
+                DomainTestFixtures.setField(arg, "orderNumber", WorkOrder.orderNumberFor(42L));
             }
             return arg;
         });
@@ -216,7 +217,7 @@ class WorkOrderServiceTest {
     @Test
     void complete_fromInExecution_shouldChangeStatus() {
         DomainTestFixtures.setField(workOrder, "status", WorkOrderStatus.IN_EXECUTION);
-        DomainTestFixtures.setField(workOrder, "executionStartedAt", LocalDateTime.now());
+        DomainTestFixtures.setField(workOrder, "executionStartedAt", OffsetDateTime.now());
         when(workOrderRepository.fetchById(1L)).thenReturn(Optional.of(workOrder));
 
         WorkOrderResponseDto result = workOrderService.complete(1L);
@@ -469,7 +470,7 @@ class WorkOrderServiceTest {
     @Test
     void complete_shouldNotifyCustomerWithFinishedEvent() {
         DomainTestFixtures.setField(workOrder, "status", WorkOrderStatus.IN_EXECUTION);
-        DomainTestFixtures.setField(workOrder, "executionStartedAt", LocalDateTime.now());
+        DomainTestFixtures.setField(workOrder, "executionStartedAt", OffsetDateTime.now());
         when(workOrderRepository.fetchById(1L)).thenReturn(Optional.of(workOrder));
 
         workOrderService.complete(1L);

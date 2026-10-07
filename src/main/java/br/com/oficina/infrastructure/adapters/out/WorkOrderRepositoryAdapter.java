@@ -14,9 +14,10 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -46,7 +47,7 @@ public class WorkOrderRepositoryAdapter implements WorkOrderRepositoryPort {
         WorkOrderEntity entity;
         if (workOrder.getId() == null) {
             entity = mapper.toNewEntity(workOrder);
-            repository.persist(entity);
+            persistWithOrderNumber(entity);
         } else {
             entity = repository.findById(workOrder.getId());
             if (entity == null) {
@@ -56,6 +57,23 @@ public class WorkOrderRepositoryAdapter implements WorkOrderRepositoryPort {
         }
         em.flush();
         return mapper.toDomain(entity);
+    }
+
+    /**
+     * {@code order_number} é NOT NULL (V5) e deriva do id gerado pelo banco: insere com um
+     * valor provisório único, e após o flush substitui por {@link WorkOrder#orderNumberFor}.
+     * Ambos os passos ocorrem na mesma transação, então o provisório nunca é observável.
+     */
+    private void persistWithOrderNumber(WorkOrderEntity entity) {
+        boolean needsNumber = entity.getOrderNumber() == null;
+        if (needsNumber) {
+            entity.setOrderNumber("TMP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16));
+        }
+        repository.persist(entity);
+        if (needsNumber) {
+            em.flush();
+            entity.setOrderNumber(WorkOrder.orderNumberFor(entity.getId()));
+        }
     }
 
     @Override
@@ -143,7 +161,7 @@ public class WorkOrderRepositoryAdapter implements WorkOrderRepositoryPort {
             .getResultList();
 
         return rows.stream()
-            .mapToLong(row -> Duration.between((LocalDateTime) row[0], (LocalDateTime) row[1]).toMinutes())
+            .mapToLong(row -> Duration.between((OffsetDateTime) row[0], (OffsetDateTime) row[1]).toMinutes())
             .average()
             .orElse(0.0);
     }

@@ -2,7 +2,7 @@ package br.com.oficina.application.dto;
 
 import br.com.oficina.domain.model.ServiceItem;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public record ServiceItemResponseDto(
     Long id,
@@ -11,7 +11,7 @@ public record ServiceItemResponseDto(
     BigDecimal basePrice,
     Integer estimatedDurationMinutes,
     Boolean active,
-    LocalDateTime createdAt
+    OffsetDateTime createdAt
 ) {
     public static ServiceItemResponseDto from(ServiceItem s) {
         return new ServiceItemResponseDto(
