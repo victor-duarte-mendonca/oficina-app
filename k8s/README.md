@@ -7,6 +7,7 @@ seção "Buscar o kubeconfig").
 
 | Arquivo               | Recurso                                                       |
 |-----------------------|---------------------------------------------------------------|
+| `base/` + `overlays/{hml,prod}` | Kustomize: a base tem os valores de produção; cada overlay sobrescreve réplicas/HPA, seed e nome do ambiente |
 | `namespace.yaml`      | Namespace `oficina`                                           |
 | `configmap.yaml`      | Configuração não sensível (perfil, CORS, SMTP, seed)          |
 | `secret.yaml`         | **Placeholders** — os valores reais vêm dos comandos abaixo   |
@@ -67,21 +68,44 @@ kubectl create secret generic oficina-secrets --namespace oficina \
   --from-literal=MAILER_USERNAME='<usuario SMTP>' \
   --from-literal=MAILER_PASSWORD='<senha SMTP>' \
   --from-literal=APP_SEED_ADMIN_PASSWORD='<senha do admin>' \
-  --from-literal=APP_SEED_MECHANIC_PASSWORD='<senha do mecanico>'
+  --from-literal=APP_SEED_MECHANIC_PASSWORD='<senha do mecanico>' \
+  --from-literal=APP_GATEWAY_KEY='<mesma chave configurada no API Gateway>' \
+  --from-literal=LAMBDA_RO_PASSWORD='<senha do papel oficina_auth_ro (migration V6)>'
 ```
+
+> `APP_GATEWAY_KEY` ativa o `GatewayKeyFilter`: com ela, `/admin/*` e `/me/*` só respondem a requisições
+> que tragam o header `X-Gateway-Key` igual (o API Gateway o injeta). Vazia, o filtro fica desligado.
+> `DB_HOST` vem do SSM (`/oficina/<env>/db_endpoint`) e a URL JDBC de produção já usa `sslmode=require`.
 
 > ⚠️ **O SMTP deixou de ser opcional.** A aprovação pública do orçamento exige um código de uso único
 > que só é entregue por e-mail. Sem SMTP funcionando, o cliente não consegue aprovar remotamente — resta
 > o canal administrativo (`PATCH /admin/work-orders/{id}/approve`), que registra a decisão tomada
 > presencialmente. A falha de envio continua não derrubando a transição de status.
 
-## 5. Deployment, service, ingress, HPA e network policy
+## 5. Deployment, service, ingress, HPA e network policy (kustomize)
+
+Os manifestos ficam em `k8s/base` e são parametrizados por **kustomize** (sem `sed` no YAML). Cada
+ambiente é um cluster distinto ([spec 06](../specs/06-infra-k8s-terraform.md) §4), com o mesmo namespace
+`oficina`; o que muda é o overlay:
+
+| | `overlays/hml` | `overlays/prod` |
+|---|---|---|
+| Réplicas / HPA | 1 → 2 | 2 → 4 |
+| `APP_SEED_ENABLED` | `true` (demonstração) | `false` |
+| `APP_ENV` (campo `env` nos logs) | `hml` | `prod` |
 
 ```bash
-sed "s#CHANGE_ME_ECR_REPOSITORY_URL#$(terraform -chdir=../infra output -raw ecr_repository_url)#" k8s/deployment.yaml \
-  | kubectl apply -f -
-kubectl apply -f k8s/service.yaml -f k8s/ingress.yaml -f k8s/hpa.yaml -f k8s/networkpolicy.yaml
+ENV=hml   # ou prod
+ECR=$(aws ssm get-parameter --name /oficina/$ENV/ecr_repository_url --query Parameter.Value --output text)
+(cd k8s/overlays/$ENV && kustomize edit set image CHANGE_ME_ECR_REPOSITORY_URL=$ECR:<tag>)
+kubectl apply -k k8s/overlays/$ENV
 ```
+
+Pré-visualizar sem aplicar: `kubectl kustomize k8s/overlays/hml`. O `secret.yaml` da base só tem
+placeholders; os valores reais vêm do passo 4 (aplique o Secret real depois do `apply -k`, ou remova o
+`secret.yaml` dos `resources` no ambiente que o gerencia por fora).
+
+O egresso da `NetworkPolicy` inclui TCP 443 (exportador OTLP para o New Relic), além de DNS, PostgreSQL e SMTP.
 
 ## 6. Validar
 

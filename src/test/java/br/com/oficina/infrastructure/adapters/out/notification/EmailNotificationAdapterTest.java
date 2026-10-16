@@ -38,6 +38,7 @@ class EmailNotificationAdapterTest {
     void setUp() {
         adapter = new EmailNotificationAdapter();
         adapter.mailer = mailer;
+        adapter.metrics = org.mockito.Mockito.mock(br.com.oficina.application.ports.out.BusinessMetricsPort.class);
     }
 
     private static final String APPROVAL_TOKEN = "tok3n-de-aprovacao-de-uso-unico";

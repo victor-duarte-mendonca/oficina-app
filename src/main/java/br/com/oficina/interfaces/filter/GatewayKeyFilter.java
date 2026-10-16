@@ -1,5 +1,6 @@
 package br.com.oficina.interfaces.filter;
 
+import br.com.oficina.application.ports.out.BusinessMetricsPort;
 import jakarta.annotation.Priority;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -29,8 +30,11 @@ public class GatewayKeyFilter implements ContainerRequestFilter {
     static final String HEADER = "X-Gateway-Key";
 
     private final byte[] expectedKey;
+    private final BusinessMetricsPort metrics;
 
-    public GatewayKeyFilter(@ConfigProperty(name = "app.gateway.key") Optional<String> gatewayKey) {
+    public GatewayKeyFilter(@ConfigProperty(name = "app.gateway.key") Optional<String> gatewayKey,
+                            BusinessMetricsPort metrics) {
+        this.metrics = metrics;
         this.expectedKey = gatewayKey.filter(key -> !key.isBlank())
             .map(key -> key.getBytes(StandardCharsets.UTF_8))
             .orElse(null);
@@ -43,6 +47,7 @@ public class GatewayKeyFilter implements ContainerRequestFilter {
         }
         String provided = request.getHeaderString(HEADER);
         if (provided == null || !matches(provided)) {
+            metrics.authDenied(provided == null ? "gateway_key_missing" : "gateway_key_invalid");
             request.abortWith(Response.status(Response.Status.FORBIDDEN)
                 .type(MediaType.APPLICATION_JSON)
                 .entity(Map.of("status", 403, "error", "Forbidden", "message", "Acesso negado"))

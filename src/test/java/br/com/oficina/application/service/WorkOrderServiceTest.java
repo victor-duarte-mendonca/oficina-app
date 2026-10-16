@@ -7,6 +7,7 @@ import br.com.oficina.domain.exception.InvalidStatusTransitionException;
 import br.com.oficina.domain.exception.ResourceNotFoundException;
 import br.com.oficina.domain.event.WorkOrderStatusChangedEvent;
 import br.com.oficina.domain.model.*;
+import br.com.oficina.application.ports.out.BusinessMetricsPort;
 import br.com.oficina.application.ports.out.ClientRepositoryPort;
 import br.com.oficina.application.ports.out.NotificationGatewayPort;
 import br.com.oficina.application.ports.out.PartRepositoryPort;
@@ -37,6 +38,7 @@ class WorkOrderServiceTest {
     @Mock PartRepositoryPort partRepository;
     @Mock ServiceItemRepositoryPort serviceItemRepository;
     @Mock NotificationGatewayPort notificationGateway;
+    @Mock BusinessMetricsPort metrics;
 
     @InjectMocks
     WorkOrderService workOrderService;

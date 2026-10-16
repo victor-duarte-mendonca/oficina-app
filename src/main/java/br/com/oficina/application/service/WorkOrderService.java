@@ -11,6 +11,9 @@ import br.com.oficina.domain.event.WorkOrderStatusChangedEvent;
 import br.com.oficina.domain.exception.BusinessException;
 import br.com.oficina.domain.exception.ResourceNotFoundException;
 import br.com.oficina.domain.model.*;
+import br.com.oficina.application.ports.out.BusinessMetricsPort;
+import br.com.oficina.application.ports.out.BusinessMetricsPort.Integration;
+import br.com.oficina.application.ports.out.BusinessMetricsPort.TransitionFailure;
 import br.com.oficina.application.ports.out.ClientRepositoryPort;
 import br.com.oficina.application.ports.out.NotificationGatewayPort;
 import br.com.oficina.application.ports.out.PartRepositoryPort;
@@ -21,7 +24,11 @@ import br.com.oficina.domain.valueobject.CpfCnpj;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import jakarta.transaction.Transactional.TxType;
+import br.com.oficina.domain.exception.InvalidStatusTransitionException;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.jboss.logging.Logger;
 
 @ApplicationScoped
@@ -36,19 +43,22 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
     PartRepositoryPort partRepository;
     ServiceItemRepositoryPort serviceItemRepository;
     NotificationGatewayPort notificationGateway;
+    BusinessMetricsPort metrics;
 
     public WorkOrderService(WorkOrderRepositoryPort workOrderRepository,
                             ClientRepositoryPort clientRepository,
                             VehicleRepositoryPort vehicleRepository,
                             PartRepositoryPort partRepository,
                             ServiceItemRepositoryPort serviceItemRepository,
-                            NotificationGatewayPort notificationGateway) {
+                            NotificationGatewayPort notificationGateway,
+                            BusinessMetricsPort metrics) {
         this.workOrderRepository = workOrderRepository;
         this.clientRepository = clientRepository;
         this.vehicleRepository = vehicleRepository;
         this.partRepository = partRepository;
         this.serviceItemRepository = serviceItemRepository;
         this.notificationGateway = notificationGateway;
+        this.metrics = metrics;
     }
 
     @Override
@@ -97,7 +107,7 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
 
     @Override
     @Transactional
-    public WorkOrderResponseDto create(WorkOrderCreateDto dto) {
+    public WorkOrderResponseDto create(WorkOrderCreateDto dto, Origin origin) {
         String normalizedCpfCnpj = CpfCnpj.normalize(dto.clientCpfCnpj());
         Client client = clientRepository.findByCpfCnpj(normalizedCpfCnpj)
             .orElseThrow(() -> new ResourceNotFoundException(
@@ -112,7 +122,7 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
         }
 
         WorkOrder wo = new WorkOrder(snapshotOf(client), snapshotOf(vehicle), dto.notes());
-        wo = workOrderRepository.save(wo);
+        wo = persist(wo);
 
         if (dto.services() != null) {
             for (WorkOrderServiceDto s : dto.services()) {
@@ -124,7 +134,9 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
                 addPartToOrder(wo, p);
             }
         }
-        return WorkOrderResponseDto.from(workOrderRepository.save(wo));
+        WorkOrder saved = persist(wo);
+        metrics.workOrderCreated(origin);
+        return WorkOrderResponseDto.from(saved);
     }
 
     @Override
@@ -164,16 +176,14 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
     @Transactional
     public WorkOrderResponseDto startDiagnosis(Long id) {
         WorkOrder wo = findWorkOrder(id);
-        wo.startDiagnosis();
-        return WorkOrderResponseDto.from(workOrderRepository.save(wo));
+        return WorkOrderResponseDto.from(transition(wo, wo::startDiagnosis, NO_SIDE_EFFECT));
     }
 
     @Override
     @Transactional
     public WorkOrderResponseDto sendForApproval(Long id) {
         WorkOrder wo = findWorkOrder(id);
-        wo.sendForApproval();
-        WorkOrder saved = workOrderRepository.save(wo);
+        WorkOrder saved = transition(wo, wo::sendForApproval, NO_SIDE_EFFECT);
         notifyStatusChange(saved);
         return WorkOrderResponseDto.from(saved);
     }
@@ -182,25 +192,21 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
     @Transactional
     public WorkOrderResponseDto approve(Long id) {
         WorkOrder wo = findWorkOrder(id);
-        wo.approve();
-        return WorkOrderResponseDto.from(workOrderRepository.save(wo));
+        return WorkOrderResponseDto.from(transition(wo, wo::approve, NO_SIDE_EFFECT));
     }
 
     @Override
     @Transactional
     public WorkOrderResponseDto reject(Long id) {
         WorkOrder wo = findWorkOrder(id);
-        wo.reject();
-        restoreStockOfAllParts(wo);
-        return WorkOrderResponseDto.from(workOrderRepository.save(wo));
+        return WorkOrderResponseDto.from(transition(wo, wo::reject, () -> restoreStockOfAllParts(wo)));
     }
 
     @Override
     @Transactional
     public WorkOrderResponseDto complete(Long id) {
         WorkOrder wo = findWorkOrder(id);
-        wo.complete();
-        WorkOrder saved = workOrderRepository.save(wo);
+        WorkOrder saved = transition(wo, wo::complete, NO_SIDE_EFFECT);
         notifyStatusChange(saved);
         return WorkOrderResponseDto.from(saved);
     }
@@ -209,8 +215,7 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
     @Transactional
     public WorkOrderResponseDto deliver(Long id) {
         WorkOrder wo = findWorkOrder(id);
-        wo.deliver();
-        WorkOrder saved = workOrderRepository.save(wo);
+        WorkOrder saved = transition(wo, wo::deliver, NO_SIDE_EFFECT);
         notifyStatusChange(saved);
         return WorkOrderResponseDto.from(saved);
     }
@@ -219,9 +224,7 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
     @Transactional
     public WorkOrderResponseDto cancel(Long id) {
         WorkOrder wo = findWorkOrder(id);
-        wo.cancel();
-        restoreStockOfAllParts(wo);
-        return WorkOrderResponseDto.from(workOrderRepository.save(wo));
+        return WorkOrderResponseDto.from(transition(wo, wo::cancel, () -> restoreStockOfAllParts(wo)));
     }
 
     @Override
@@ -229,8 +232,8 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
     public WorkOrderResponseDto approveByOrderNumber(String orderNumber, String clientCpfCnpj,
                                                      String approvalToken) {
         WorkOrder wo = findAndAuthorize(orderNumber, clientCpfCnpj);
-        wo.approveWithToken(approvalToken);
-        return WorkOrderResponseDto.from(workOrderRepository.save(wo));
+        return WorkOrderResponseDto.from(
+            transition(wo, () -> wo.approveWithToken(approvalToken), NO_SIDE_EFFECT));
     }
 
     @Override
@@ -238,9 +241,8 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
     public WorkOrderResponseDto rejectByOrderNumber(String orderNumber, String clientCpfCnpj,
                                                     String approvalToken) {
         WorkOrder wo = findAndAuthorize(orderNumber, clientCpfCnpj);
-        wo.rejectWithToken(approvalToken);
-        restoreStockOfAllParts(wo);
-        return WorkOrderResponseDto.from(workOrderRepository.save(wo));
+        return WorkOrderResponseDto.from(
+            transition(wo, () -> wo.rejectWithToken(approvalToken), () -> restoreStockOfAllParts(wo)));
     }
 
     /**
@@ -262,6 +264,38 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
         return wo;
     }
 
+    private static final Runnable NO_SIDE_EFFECT = () -> { };
+
+    /**
+     * Executa uma transição de estado do aggregate e persiste, registrando as métricas do funil: a
+     * transição (com o tempo que a OS passou no status que deixou) em caso de sucesso, e o motivo
+     * em caso de falha. O erro de negócio de transição inválida só é contado e relançado.
+     */
+    private WorkOrder transition(WorkOrder wo, Runnable domainTransition, Runnable sideEffects) {
+        WorkOrderStatus from = wo.getStatus();
+        Optional<OffsetDateTime> enteredFrom = wo.statusEnteredAt();
+        try {
+            domainTransition.run();
+        } catch (InvalidStatusTransitionException e) {
+            metrics.transitionFailed(TransitionFailure.INVALID_TRANSITION);
+            throw e;
+        }
+        sideEffects.run();
+        WorkOrder saved = persist(wo);
+        metrics.statusTransition(from, saved.getStatus(),
+            enteredFrom.map(entered -> Duration.between(entered, OffsetDateTime.now())));
+        return saved;
+    }
+
+    private WorkOrder persist(WorkOrder wo) {
+        try {
+            return workOrderRepository.save(wo);
+        } catch (RuntimeException e) {
+            metrics.transitionFailed(TransitionFailure.PERSISTENCE);
+            throw e;
+        }
+    }
+
     private WorkOrder findWorkOrder(Long id) {
         return workOrderRepository.fetchById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Ordem de Serviço", id));
@@ -279,6 +313,7 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
         try {
             notificationGateway.notifyStatusChange(WorkOrderStatusChangedEvent.of(saved));
         } catch (RuntimeException e) {
+            metrics.integrationFailed(Integration.SMTP);
             LOG.errorf(e, "Falha ao notificar mudança de status da OS %s; transição preservada.",
                 saved.getOrderNumber());
         }
@@ -300,7 +335,12 @@ public class WorkOrderService implements CreateWorkOrderUseCase, ManageWorkOrder
             throw new BusinessException("Peça/Insumo inativo: " + part.getName());
         }
         wo.addPart(part.getId(), part.getName(), dto.quantity(), part.getUnitPrice());
-        part.decreaseStock(dto.quantity());
+        try {
+            part.decreaseStock(dto.quantity());
+        } catch (BusinessException e) {
+            metrics.transitionFailed(TransitionFailure.STOCK);
+            throw e;
+        }
         partRepository.save(part);
     }
 

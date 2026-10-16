@@ -40,3 +40,7 @@ spec:
           port: 5432
         - protocol: TCP
           port: 587
+        # HTTPS: exportador OTLP de telemetria para o New Relic. Sem esta regra, com um CNI que
+        # implemente a política, a telemetria simplesmente não sairia do pod.
+        - protocol: TCP
+          port: 443
