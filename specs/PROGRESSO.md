@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-16** (sessão 5 — E2 e E3 concluídas em hml; stacks hml no ar até o destroy).
+> Última atualização: **2026-10-16** (sessão 5 — E2, E3 concluídas; E4 implementada, PR 2/2 aberto; nada de pé na AWS).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -13,7 +13,7 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 | E1 Modelagem do banco (V5, `clients.status`, pool) | 01 | oficina-app | ✅ concluída |
 | E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | ✅ concluída (hml aplicada; prod ainda não) |
 | E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | ✅ concluída (hml aplicada; prod ainda não) |
-| E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ⬜ |
+| E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | 🟨 PR #12 aberto |
 | E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ⬜ |
 | E6 API Gateway + authorizer | 03 | oficina-auth-lambda | ⬜ |
 | E7 Observabilidade fim-a-fim (New Relic) | 05 | app + infra + lambda | ⬜ |
@@ -22,17 +22,18 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 
 ## Próximo passo
 
-**E2 e E3 aplicadas em `hml` e validadas pelo usuário** (SSM com 10 parâmetros; RDS `available`, privado e criptografado).
-**As stacks `hml` ESTÃO NO AR e cobrando** (EC2 ≈ US$ 0,028/h + RDS ≈ US$ 0,019/h) até o destroy. Ordem:
-`oficina-infra-database` → `oficina-infra-k8s` (Actions → `Terraform` → Run workflow → *Use workflow from: `homolog`* → `hml` + `destroy-hml`).
+**E4 — spec 04**: código completo em dois PRs. PR 1/2 (segurança: `/me`, `OwnershipGuard`, `GatewayKeyFilter`) mergeado em `homolog`;
+PR 2/2 ([oficina-app#12](https://github.com/victor-duarte-mendonca/oficina-app/pull/12): correlação, métricas, kustomize, Postman) aberto para `homolog`
+(`mvn verify` local: 429 testes + gate JaCoCo). **Nenhuma infra AWS está de pé** (hml destruído e conferido na sessão 5).
 
-**Próxima etapa: E4 — spec 04** em `oficina-app` (branch `feature/e4-rbac-cliente` a partir de `homolog`, PR para `homolog`):
-`MeResource` (`/me`, `@RolesAllowed("CLIENT")`), `OwnershipGuard` + `AuthenticatedCaller` na camada de aplicação, `GatewayKeyFilter`,
-`CorrelationIdFilter`, 6 métricas Micrometer em `WorkOrderService`, NetworkPolicy 443, kustomize por ambiente, seed só em hml,
-testes (matriz RBAC, ownership, filtros, métricas), gate JaCoCo ampliado e coleção Postman. É código local: **não precisa da infra de pé**.
-
-**Depois:** PRs `homolog` → `main` em infra-k8s e infra-database quando quiser subir `prod` (apply pede aprovação de `producao`);
-E5 (Lambda) precisa criar a regra 5432 no SG do RDS via `/oficina/<env>/rds_security_group_id` e usar `sslmode=require`.
+**Ao retomar (ordem):**
+1. Usuário: conferir o CI do PR #12 e mergear em `homolog`.
+2. **E5 — spec 02** em `oficina-auth-lambda` (Lambda de autenticação por CPF), branch `feature/e5-auth-lambda` a partir de `homolog`.
+   Requisitos já fixados: ler `/oficina/<env>/rds_security_group_id` e criar a própria regra 5432 no SG do RDS; usar `sslmode=require`;
+   emitir JWT RS256 com o mesmo `iss` e a mesma chave da app, claims `groups:["CLIENT"]` e `clientId`.
+   É a primeira etapa que precisa de sessão AWS (E2 + E3 de pé em `hml`) para o `plan`/`apply` reais.
+3. Depois: E6 (API Gateway + authorizer), E7 (observabilidade, inclui `OTEL_*`/`NEW_RELIC_*`), E8 (documentação), E9 (runbook).
+4. PRs `homolog` → `main` nos três repos só quando quiser subir `prod` (apply pede aprovação de `producao`).
 
 **Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
 
@@ -135,3 +136,12 @@ reviewer* = Victor, self-review permitido). **Nenhum secret definido ainda** (or
   após o secret, re-run OK. `aws` CLI exigiu `--region`/`AWS_DEFAULT_REGION` (config local sem região). Secrets que existem:
   org `ALLOWED_CIDR` + `AWS_*`; env `homologacao` de infra-database `DB_PASSWORD`. **Ainda sem**: `producao` (DB_PASSWORD), e os do app
   (gateway key, JWT, mailer, seed) — entram com E4/E5/E6.
+- **2026-10-16 (sessão 5, E4)** — PR 1/2 (oficina-app#11): `MeResource` (`/me`, só CLIENT), `AuthenticatedCaller`+`OwnershipGuard`
+  (404, não 403, para recurso alheio), `ClientSelfService` (reaproveita `CreateWorkOrderUseCase`/`ChangeWorkOrderStatusUseCase`; o cliente só informa
+  `vehicleId`+`notes`, nunca serviços/peças), `GatewayKeyFilter`, matriz RBAC rota×papel com JWT RS256 real (validada por mutação), gate JaCoCo ampliado.
+  PR 2/2 (#12): `CorrelationIdFilter` como filtro do **Vert.x** (`Filters`), não JAX-RS — só assim o 401/403 gerado pela segurança também leva
+  `X-Correlation-Id`; id recebido é validado (anti log injection); `BusinessMetricsPort` + adapter Micrometer (aplicação sem Micrometer); 6 métricas do spec;
+  `oficina_auth_denied_total` via eventos de segurança do Quarkus (anônimo = `unauthenticated`, papel errado = `forbidden`); kustomize `base`+`overlays/{hml,prod}`
+  (seed só em hml; HPA hml 1→2, prod 2→4); NetworkPolicy 443; Postman com pasta do cliente (precisa de gateway + Lambda). Com o gateway ligado, requisição sem a chave
+  recebe 403 antes da autenticação (inclusive sem token). **Não validado**: `kubectl apply` em cluster e o Postman contra gateway real. **Ficou para a E7**:
+  `OTEL_*`/`NEW_RELIC_*` no ConfigMap. **Secrets do app ainda inexistentes** (entram no deploy): `APP_GATEWAY_KEY`, `LAMBDA_RO_PASSWORD`, chaves JWT, SMTP, senhas de seed.
