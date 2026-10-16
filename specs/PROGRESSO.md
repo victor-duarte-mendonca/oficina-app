@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-07** (sessão 4 — E1 corrigida, homolog alinhada, E2 preparada; pausa por credenciais AWS expiradas).
+> Última atualização: **2026-10-16** (sessão 5 — E2 implementada, PR infra-k8s#6 aberto).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -11,7 +11,7 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 |---|---|---|---|
 | E0 Split dos repositórios + proteção + pipelines | 08 | todos | ✅ concluída |
 | E1 Modelagem do banco (V5, `clients.status`, pool) | 01 | oficina-app | ✅ concluída |
-| E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | ⬜ |
+| E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | 🟨 PR #6 aberto |
 | E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | ⬜ |
 | E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ⬜ |
 | E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ⬜ |
@@ -22,23 +22,15 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 
 ## Próximo passo
 
-**E2 — spec 06** em `oficina-infra-k8s`. **Não iniciada no código**: só a branch local `feature/e2-infra-k8s` (a partir de `origin/homolog`, vazia) existe. PR da E2 vai para `homolog`.
-Bloqueia E4 (precisa da infra K8s pronta). O `apply` exige credenciais da sessão Academy.
+**E2 — spec 06**: código pronto, PR [oficina-infra-k8s#6](https://github.com/victor-duarte-mendonca/oficina-infra-k8s/pull/6) aberto para `homolog`
+(fmt, validate hml/prod, tflint, trivy config e actionlint limpos localmente; `plan`/`apply` ainda não rodaram).
 
 **Ao retomar (ordem):**
-1. Usuário: reabrir o AWS Academy (credenciais anteriores invalidaram) e rodar `scripts/set-aws-session-secrets.sh`; definir `ALLOWED_CIDR`.
-2. Claude: ler `specs/06-infra-k8s-terraform.md` e implementar o escopo abaixo.
-3. Claude: `terraform fmt`/`validate` local (v1.15.8 instalado; sem `tflint`/`trivy` — ficam para o CI), commit, PR para `homolog`.
-
-**Plano de implementação já decidido (sessão 4)** — `oficina-infra-k8s`:
-- Remover `db_password`/`db_instance_class` e o SG `rds` (RDS vive em infra-database; o SG de ingresso 5432 será criado lá a partir do SSM `k3s_security_group_id`).
-- Workspaces `hml`/`prod` via `locals` (instance_type t3.small/t3.medium, volume 20 GiB); prefixo de nomes `oficina-<workspace>` (key pair e SG colidiriam entre stacks); `default_tags.Environment = workspace`.
-- `backend.tf`: `workspace_key_prefix = "oficina/infra-k8s"`, `key = "terraform.tfstate"` (S3 grava em `<prefix>/<workspace>/terraform.tfstate`; spec pede `<workspace>.tfstate` — desvio mínimo a registrar).
-- `security_groups.tf`: porta 80 também para as faixas do API Gateway (`data "aws_ip_ranges"`, `aws_vpc_security_group_ingress_rule` com `for_each`); atenção ao limite de 60 regras por SG.
-- `ssm_outputs.tf`: 6 parâmetros `/oficina/<env>/{vpc_id,private_subnet_ids,k3s_security_group_id,k3s_eip,ecr_repository_url,application_url}`.
-- `observability.tf` (nri-bundle): **adiar para E7** — o helm provider precisa do kubeconfig de um cluster que ainda não existe no `plan`. Confirmar com o usuário.
-- Pipeline `terraform.yml`: `validate` (+tflint, trivy config), `plan` com comentário no PR, `apply` por branch (homolog→hml, main→prod, environments `homologacao`/`producao`), `destroy` via `workflow_dispatch` com confirmação digitada + varredura de órfãos por tag.
-- README: diagrama Mermaid, pré-requisitos, comandos, tabela de custo.
+1. Usuário: conferir os checks do PR #6 (o `plan` comenta o plano em hml) e mergear em `homolog`.
+   **O merge dispara `apply` em `hml`** (≈ US$ 0,028/h) — só mergear com a sessão Academy ativa e com tempo para validar.
+2. Validar: `kubectl get nodes` via túnel SSM, 6 parâmetros `/oficina/hml/*` no SSM, `apigateway:*` e `LabRole` (validações abaixo).
+3. Rodar o workflow `destroy` (hml) ao fim da sessão; depois PR `homolog` → `main` (apply em `prod` pede aprovação do ambiente `producao`).
+4. Depois da E2 validada: E3 (`oficina-infra-database`, spec 07). Lembrar que o bucket de state agora é `oficina-tfstate-<account-id>` (passar via `-backend-config`; ver README do infra-k8s).
 
 **Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
 
@@ -47,10 +39,9 @@ Bloqueia E4 (precisa da infra K8s pronta). O `apply` exige credenciais da sessã
 **Do usuário**
 - [x] Mergear oficina-infra-k8s#1 (script de segredos)
 - [x] Alinhar `homolog` com `main` (oficina-app#3, oficina-infra-k8s#4)
-- [ ] **Reabrir o AWS Academy** (credenciais da sessão 4 invalidaram) e rodar `oficina-infra-k8s/scripts/set-aws-session-secrets.sh` — necessário para `plan`/`apply` da E2
-- [ ] Definir o secret `ALLOWED_CIDR` (seu IP público /32; org-level, spec 08 §5) antes do primeiro `plan`
-- [ ] Confirmar que o bucket `victor-duarte-mendonca-oficina-tfstate` existe na conta Academy atual (senão recriar; bootstrap manual fora do módulo)
-- [ ] Decidir: `observability.tf` fica na E7 (recomendado) ou entra na E2
+- [x] Reabrir o AWS Academy, rodar `set-aws-session-secrets.sh` e definir `ALLOWED_CIDR` (sessão 5)
+- [x] Bucket de state: o nome fixo antigo não existia mais na conta; criado `oficina-tfstate-<account-id>` (a pipeline também o cria via `scripts/bootstrap-state-bucket.sh`)
+- [x] `observability.tf` (nri-bundle) fica na E7 (adotado por padrão; reverter se quiser na E2)
 - [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
 
@@ -114,3 +105,10 @@ reviewer* = Victor, self-review permitido). **Nenhum secret definido ainda** (or
   (oficina-app#3, oficina-infra-k8s#4; auth-lambda e infra-database já iguais); `CLAUDE.md` do workspace
   agora manda feature → `homolog` → `main`. E2: spec lida e plano fechado (ver "Próximo passo"); nenhum
   Terraform escrito. Sessão encerrada porque as credenciais AWS Academy invalidaram.
+- **2026-10-16 (sessão 5)** — Credenciais renovadas e secrets publicados. Bucket de state antigo inexistente
+  (nome S3 é global; conta Academy reciclada) → convenção `oficina-tfstate-<account-id>` via `-backend-config`.
+  E2 implementada em `oficina-infra-k8s` (PR #6): locals por workspace, SG com faixas do API Gateway
+  (+precondition de 60 regras), RDS removido, `ssm_outputs.tf`, ECR com scan, pipeline completa
+  (validate/plan comentado/apply por branch/destroy com confirmação), README. Trivy: AWS-0104/0164/0031
+  aceitos em `.trivyignore` (sem NAT; app usa `:latest`). `observability.tf` adiado para E7.
+  Nenhum `plan`/`apply` real ainda.
