@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-16** (sessão 5 — E2 implementada, PR infra-k8s#6 aberto).
+> Última atualização: **2026-10-16** (sessão 5 — E2 concluída em hml; stack hml no ar).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -11,7 +11,7 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 |---|---|---|---|
 | E0 Split dos repositórios + proteção + pipelines | 08 | todos | ✅ concluída |
 | E1 Modelagem do banco (V5, `clients.status`, pool) | 01 | oficina-app | ✅ concluída |
-| E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | 🟨 PR #6 aberto |
+| E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | ✅ concluída (hml aplicada; prod ainda não) |
 | E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | ⬜ |
 | E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ⬜ |
 | E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ⬜ |
@@ -22,15 +22,16 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 
 ## Próximo passo
 
-**E2 — spec 06**: código pronto, PR [oficina-infra-k8s#6](https://github.com/victor-duarte-mendonca/oficina-infra-k8s/pull/6) aberto para `homolog`
-(fmt, validate hml/prod, tflint, trivy config e actionlint limpos localmente; `plan`/`apply` ainda não rodaram).
+**Stack `hml` da E2 está NO AR** (apply de 2026-10-16 OK, 39 recursos) e cobrando (≈ US$ 0,028/h). Destruir ao fim da sessão:
+Actions → `Terraform` → *Run workflow* → `destroy`, workspace `hml`, confirmação `destroy-hml`.
 
-**Ao retomar (ordem):**
-1. Usuário: conferir os checks do PR #6 (o `plan` comenta o plano em hml) e mergear em `homolog`.
-   **O merge dispara `apply` em `hml`** (≈ US$ 0,028/h) — só mergear com a sessão Academy ativa e com tempo para validar.
-2. Validar: `kubectl get nodes` via túnel SSM, 6 parâmetros `/oficina/hml/*` no SSM, `apigateway:*` e `LabRole` (validações abaixo).
-3. Rodar o workflow `destroy` (hml) ao fim da sessão; depois PR `homolog` → `main` (apply em `prod` pede aprovação do ambiente `producao`).
-4. Depois da E2 validada: E3 (`oficina-infra-database`, spec 07). Lembrar que o bucket de state agora é `oficina-tfstate-<account-id>` (passar via `-backend-config`; ver README do infra-k8s).
+**Ordem sugerida (aproveitando `hml` de pé):**
+1. **E3 — spec 07** em `oficina-infra-database`, branch `feature/e3-infra-database` a partir de `homolog`, PR para `homolog`.
+   Consome os parâmetros `/oficina/hml/{vpc_id,private_subnet_ids,k3s_security_group_id}`. Usar o mesmo bucket de state
+   (`oficina-tfstate-<account-id>`, via `-backend-config`; copiar `scripts/bootstrap-state-bucket.sh` e o padrão de `locals.tf`/workspaces/pipeline do infra-k8s).
+2. Antes ou depois da E3 (com `hml` de pé), fechar as **validações de primeira sessão AWS** listadas abaixo.
+3. `destroy` de `hml`; depois PR `homolog` → `main` em `oficina-infra-k8s` quando quiser subir `prod` (o apply pede aprovação do ambiente `producao`).
+4. Em seguida E4 (app: role CLIENT, ownership, correlação, métricas), que precisa da infra K8s pronta.
 
 **Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
 
@@ -112,3 +113,10 @@ reviewer* = Victor, self-review permitido). **Nenhum secret definido ainda** (or
   (validate/plan comentado/apply por branch/destroy com confirmação), README. Trivy: AWS-0104/0164/0031
   aceitos em `.trivyignore` (sem NAT; app usa `:latest`). `observability.tf` adiado para E7.
   Nenhum `plan`/`apply` real ainda.
+- **2026-10-16 (sessão 5, fechamento)** — PR infra-k8s#6 mergeado em `homolog`; `apply` em `hml` com sucesso
+  (39 recursos, 6 parâmetros SSM). Correções feitas durante o CI: tag `trivy-action` (`0.28.0` → `v0.36.0`),
+  bit de execução dos scripts (`git update-index --chmod=+x`; Windows não grava) e `bootstrap-state-bucket.sh`
+  vazando JSON do `head-bucket` em stdout. Lições: ler logs de CI via `gh run view --log-failed`; todo script
+  que imprime valor consumido por `$(...)` deve silenciar o stdout dos demais comandos. Validações do usuário
+  após o apply: "parece tudo ok" (sem evidência detalhada registrada). **Ainda não validado**: `apigateway:*` e
+  trust policy da `LabRole` para Lambda (o apply da E2 não exercita nenhum dos dois). `prod` ainda não aplicada.
