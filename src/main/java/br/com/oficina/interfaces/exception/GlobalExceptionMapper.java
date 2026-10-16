@@ -1,13 +1,17 @@
 package br.com.oficina.interfaces.exception;
 
+import br.com.oficina.application.ports.out.BusinessMetricsPort;
 import br.com.oficina.domain.exception.BusinessException;
 import br.com.oficina.domain.exception.InvalidApprovalTokenException;
 import br.com.oficina.domain.exception.ResourceNotFoundException;
+import br.com.oficina.interfaces.filter.CorrelationIdFilter;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.jboss.logging.Logger;
+import org.jboss.logging.MDC;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -18,6 +22,9 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
 
     private static final Logger LOG = Logger.getLogger(GlobalExceptionMapper.class);
     private static final int UNPROCESSABLE_ENTITY = 422;
+
+    @Inject
+    BusinessMetricsPort metrics;
 
     @Override
     public Response toResponse(Throwable exception) {
@@ -49,8 +56,13 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
                 : "Registro vinculado a outros dados; operação não permitida.";
             return errorResponse(Response.Status.CONFLICT, message);
         }
-        // Não vaza detalhes internos para o cliente; usa correlation id para o operador
-        String correlationId = UUID.randomUUID().toString();
+        if (hasCause(exception, java.sql.SQLException.class)
+            || hasCause(exception, jakarta.persistence.PersistenceException.class)) {
+            metrics.integrationFailed(BusinessMetricsPort.Integration.DATABASE);
+        }
+        // Não vaza detalhes internos para o cliente; usa o correlation id da requisição (o mesmo do
+        // cabeçalho X-Correlation-Id e do log), com um novo apenas se não houver contexto de requisição.
+        String correlationId = currentCorrelationId();
         LOG.errorf(exception, "Erro inesperado [%s]: %s", correlationId, exception.getMessage());
         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
             .entity(Map.of(
@@ -77,6 +89,11 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
             }
         }
         return null;
+    }
+
+    private static String currentCorrelationId() {
+        Object fromRequest = MDC.get(CorrelationIdFilter.MDC_KEY);
+        return fromRequest != null ? fromRequest.toString() : UUID.randomUUID().toString();
     }
 
     private boolean hasCause(Throwable exception, Class<? extends Throwable> type) {

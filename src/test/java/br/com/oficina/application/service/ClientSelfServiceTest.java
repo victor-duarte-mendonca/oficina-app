@@ -3,6 +3,7 @@ package br.com.oficina.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -103,12 +104,12 @@ class ClientSelfServiceTest {
         when(vehicleRepository.fetchById(10L)).thenReturn(Optional.of(vehicle(10L, ME)));
         when(clientRepository.fetchById(ME)).thenReturn(Optional.of(client(ME)));
         WorkOrderResponseDto created = WorkOrderResponseDto.from(workOrder(9L, ME));
-        when(createWorkOrder.create(any())).thenReturn(created);
+        when(createWorkOrder.create(any(), eq(CreateWorkOrderUseCase.Origin.CLIENT))).thenReturn(created);
 
         service.openWorkOrder(caller, new ClientWorkOrderRequestDto(10L, "barulho no freio"));
 
         ArgumentCaptor<WorkOrderCreateDto> sent = ArgumentCaptor.forClass(WorkOrderCreateDto.class);
-        verify(createWorkOrder).create(sent.capture());
+        verify(createWorkOrder).create(sent.capture(), eq(CreateWorkOrderUseCase.Origin.CLIENT));
         assertThat(sent.getValue().clientCpfCnpj()).isEqualTo("11144477735");
         assertThat(sent.getValue().vehicleId()).isEqualTo(10L);
         assertThat(sent.getValue().services()).isNull();
@@ -121,7 +122,7 @@ class ClientSelfServiceTest {
 
         assertThatThrownBy(() -> service.openWorkOrder(caller, new ClientWorkOrderRequestDto(10L, null)))
             .isInstanceOf(ResourceNotFoundException.class);
-        verify(createWorkOrder, never()).create(any());
+        verify(createWorkOrder, never()).create(any(), any());
     }
 
     @Test

@@ -97,7 +97,8 @@ public class ClientSelfService implements ClientSelfServiceUseCase {
 
         Client client = loadClient(caller);
         return createWorkOrder.create(
-            new WorkOrderCreateDto(client.getCpfCnpj(), vehicle.getId(), request.notes(), null, null));
+            new WorkOrderCreateDto(client.getCpfCnpj(), vehicle.getId(), request.notes(), null, null),
+            CreateWorkOrderUseCase.Origin.CLIENT);
     }
 
     @Override

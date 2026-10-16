@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.oficina.application.ports.out.BusinessMetricsPort;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -20,7 +21,8 @@ class GatewayKeyFilterTest {
 
     private static final String KEY = "chave-do-gateway-de-teste";
 
-    private final GatewayKeyFilter filter = new GatewayKeyFilter(Optional.of(KEY));
+    private final BusinessMetricsPort metrics = mock(BusinessMetricsPort.class);
+    private final GatewayKeyFilter filter = new GatewayKeyFilter(Optional.of(KEY), metrics);
 
     @ParameterizedTest
     @ValueSource(strings = {"admin/clients", "/admin/work-orders/1", "me", "/me/work-orders", "me/vehicles"})
@@ -73,7 +75,7 @@ class GatewayKeyFilterTest {
 
     @Test
     void profileWithoutConfiguredKey_shouldDisableTheFilter() {
-        GatewayKeyFilter disabled = new GatewayKeyFilter(Optional.empty());
+        GatewayKeyFilter disabled = new GatewayKeyFilter(Optional.empty(), metrics);
         ContainerRequestContext request = request("/admin/clients", null);
 
         disabled.filter(request);
@@ -83,7 +85,7 @@ class GatewayKeyFilterTest {
 
     @Test
     void blankConfiguredKey_shouldDisableTheFilter() {
-        GatewayKeyFilter disabled = new GatewayKeyFilter(Optional.of("   "));
+        GatewayKeyFilter disabled = new GatewayKeyFilter(Optional.of("   "), metrics);
         ContainerRequestContext request = request("/me", null);
 
         disabled.filter(request);
@@ -100,8 +102,9 @@ class GatewayKeyFilterTest {
         return request;
     }
 
-    private static void assertForbidden(ContainerRequestContext request) {
+    private void assertForbidden(ContainerRequestContext request) {
         ArgumentCaptor<Response> aborted = ArgumentCaptor.forClass(Response.class);
+        verify(metrics).authDenied(org.mockito.ArgumentMatchers.startsWith("gateway_key"));
         verify(request).abortWith(aborted.capture());
         assertThat(aborted.getValue().getStatus()).isEqualTo(403);
     }

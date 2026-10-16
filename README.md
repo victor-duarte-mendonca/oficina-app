@@ -573,10 +573,9 @@ Pré-requisito: cluster provisionado (seção seguinte) e `KUBECONFIG` apontando
 completo, incluindo geração dos `Secrets`, em [`k8s/README.md`](k8s/README.md):
 
 ```bash
-kubectl apply -f k8s/namespace.yaml -f k8s/configmap.yaml
-# Secrets (ECR, JWT, DB/SMTP) — ver k8s/README.md para os comandos completos
-kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/ingress.yaml \
-              -f k8s/hpa.yaml -f k8s/networkpolicy.yaml
+# Manifestos em kustomize: base + overlays por ambiente (hml | prod)
+kubectl apply -k k8s/overlays/hml
+# Secrets (ECR, JWT, DB/SMTP, gateway) — ver k8s/README.md para os comandos completos
 kubectl get pods,hpa,svc,ingress -n oficina
 ```
 
