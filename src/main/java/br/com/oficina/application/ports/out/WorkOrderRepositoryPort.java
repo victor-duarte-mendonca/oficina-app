@@ -33,6 +33,11 @@ public interface WorkOrderRepositoryPort {
 
     List<WorkOrder> findByStatus(WorkOrderStatus status, int page, int size);
 
+    /** OS de um cliente (inclui as encerradas), da mais recente para a mais antiga. */
+    List<WorkOrder> findByClientId(Long clientId, int page, int size);
+
+    long countByClientId(Long clientId);
+
     /** Total de OS ativas, independentemente de paginação. */
     long countActive();
 
