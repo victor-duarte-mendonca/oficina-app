@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-16** (sessão 5 — E2 concluída em hml; stack hml no ar).
+> Última atualização: **2026-10-16** (sessão 5 — E2 concluída em hml; E3 com PR aberto; stack hml no ar).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -12,7 +12,7 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 | E0 Split dos repositórios + proteção + pipelines | 08 | todos | ✅ concluída |
 | E1 Modelagem do banco (V5, `clients.status`, pool) | 01 | oficina-app | ✅ concluída |
 | E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | ✅ concluída (hml aplicada; prod ainda não) |
-| E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | ⬜ |
+| E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | 🟨 PR #1 aberto |
 | E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ⬜ |
 | E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ⬜ |
 | E6 API Gateway + authorizer | 03 | oficina-auth-lambda | ⬜ |
@@ -22,16 +22,16 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 
 ## Próximo passo
 
-**Stack `hml` da E2 está NO AR** (apply de 2026-10-16 OK, 39 recursos) e cobrando (≈ US$ 0,028/h). Destruir ao fim da sessão:
-Actions → `Terraform` → *Run workflow* → `destroy`, workspace `hml`, confirmação `destroy-hml`.
+**E3 — spec 07**: código pronto, PR [oficina-infra-database#1](https://github.com/victor-duarte-mendonca/oficina-infra-database/pull/1) aberto para `homolog`
+(validate e plan verdes no CI: 9 recursos a criar, lendo o SSM da stack `hml` da E2). Junto, [oficina-app#8](https://github.com/victor-duarte-mendonca/oficina-app/pull/8) (`sslmode=require` no perfil prod).
 
-**Ordem sugerida (aproveitando `hml` de pé):**
-1. **E3 — spec 07** em `oficina-infra-database`, branch `feature/e3-infra-database` a partir de `homolog`, PR para `homolog`.
-   Consome os parâmetros `/oficina/hml/{vpc_id,private_subnet_ids,k3s_security_group_id}`. Usar o mesmo bucket de state
-   (`oficina-tfstate-<account-id>`, via `-backend-config`; copiar `scripts/bootstrap-state-bucket.sh` e o padrão de `locals.tf`/workspaces/pipeline do infra-k8s).
-2. Antes ou depois da E3 (com `hml` de pé), fechar as **validações de primeira sessão AWS** listadas abaixo.
-3. `destroy` de `hml`; depois PR `homolog` → `main` em `oficina-infra-k8s` quando quiser subir `prod` (o apply pede aprovação do ambiente `producao`).
-4. Em seguida E4 (app: role CLIENT, ownership, correlação, métricas), que precisa da infra K8s pronta.
+**Ao retomar (ordem):**
+1. Usuário: criar o secret **`DB_PASSWORD`** no environment `homologacao` de `oficina-infra-database` (≥ 16 caracteres, sem `/ @ "` ou espaço; `DB_USERNAME` opcional, padrão `oficina_admin`). Sem ele o `apply` falha cedo, sem criar nada.
+2. Usuário: mergear oficina-app#8 e depois oficina-infra-database#1 (com a stack `hml` da E2 de pé e a sessão Academy ativa).
+   **O merge dispara `apply` em `hml` e cria o RDS** (~8 min, ≈ US$ 0,019/h; o End Lab NÃO o desliga).
+3. Validar: 4 parâmetros `/oficina/hml/{db_endpoint,db_port,db_name,rds_security_group_id}`; `rds.force_ssl=1` no parameter group; conexão de um pod do k3s com `sslmode=require` (e recusa sem TLS).
+4. **Destroy ao fim da sessão, nesta ordem**: `oficina-infra-database` → `oficina-infra-k8s` (workflow `Terraform` → Run workflow → *Use workflow from: `homolog`* → `hml` + `destroy-hml`).
+5. Depois: PRs `homolog` → `main` nos dois repos (apply em `prod` pede aprovação de `producao`) e **E4** (app: role CLIENT, ownership, correlação, métricas).
 
 **Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
 
@@ -120,3 +120,12 @@ reviewer* = Victor, self-review permitido). **Nenhum secret definido ainda** (or
   que imprime valor consumido por `$(...)` deve silenciar o stdout dos demais comandos. Validações do usuário
   após o apply: "parece tudo ok" (sem evidência detalhada registrada). **Ainda não validado**: `apigateway:*` e
   trust policy da `LabRole` para Lambda (o apply da E2 não exercita nenhum dos dois). `prod` ainda não aplicada.
+- **2026-10-16 (sessão 5, E3)** — E3 implementada em `oficina-infra-database` (PR #1): RDS PG16 por workspace
+  (hml sem backup, prod 1 dia), parameter group (consulta lenta 500 ms, log de conexões, `rds.force_ssl=1`), SG
+  do RDS, rede lida do SSM, publica `db_endpoint/db_port/db_name/rds_security_group_id`; pipeline igual à da E2 com
+  `aws rds wait db-instance-available` e aviso de custo. **Desvio da spec 07 §2**: o SG do RDS não referencia o SG do
+  Lambda (só existe na E5, aplicado depois) — a E5 deve ler `/oficina/<env>/rds_security_group_id` e criar a própria
+  `aws_vpc_security_group_ingress_rule` 5432. **Decisão do plan**: usa senha placeholder (a real é secret de
+  environment; usá-lo no plan pediria aprovação de `producao` a cada PR) — o plan mostra `password` como alterada.
+  Senha com `/ @ "` ou espaço é recusada na validação (limites do RDS). Mudança coordenada de TLS: oficina-app#8
+  (JDBC prod) já aberto; **o Lambda (E5) também precisa de `sslmode=require`**.
