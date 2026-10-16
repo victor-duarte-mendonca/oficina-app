@@ -45,6 +45,8 @@ PR 2/2 ([oficina-app#12](https://github.com/victor-duarte-mendonca/oficina-app/p
 - [x] Reabrir o AWS Academy, rodar `set-aws-session-secrets.sh` e definir `ALLOWED_CIDR` (sessão 5)
 - [x] Bucket de state: o nome fixo antigo não existia mais na conta; criado `oficina-tfstate-<account-id>` (a pipeline também o cria via `scripts/bootstrap-state-bucket.sh`)
 - [x] `observability.tf` (nri-bundle) fica na E7 (adotado por padrão; reverter se quiser na E2)
+- [ ] Mergear **oficina-app#12** (E4 2/2) e **oficina-app#13** (este registro), depois conferir o CI
+- [ ] Definir `DB_PASSWORD` no environment `producao` de `oficina-infra-database` (só quando for subir `prod`)
 - [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
 
@@ -52,13 +54,13 @@ PR 2/2 ([oficina-app#12](https://github.com/victor-duarte-mendonca/oficina-app/p
 - [ ] `apigateway:*` liberado na conta Academy? (`terraform plan` mínimo)
 - [ ] `LabRole` com trust policy para `lambda.amazonaws.com` e permissão de ENI na VPC?
 
-## Estado atual dos repositórios (após E0)
+## Estado atual dos repositórios (fim da sessão 5)
 
 | Repo | Branch local | Conteúdo | Pipeline | Checks obrigatórios |
 |---|---|---|---|---|
 | `oficina-app` | `main` | app Quarkus completa (raiz = antigo `oficina/`), `.github/actions/k3s-kubeconfig`, `specs/` | `ci.yml` | `build-test`, `docker-build` (Trivy CRITICAL/fixed) |
-| `oficina-infra-k8s` | `feature/script-segredos-sessao` (PR#1) | antigo `oficina/infra/` sem `rds.tf`/`rds_endpoint`; `.gitignore` | `terraform.yml` | `validate`, `plan` (plan só roda com secrets AWS presentes) |
-| `oficina-infra-database` | `main` | só `rds.tf` + README — módulo incompleto até E3 | `terraform.yml` (validate = só `fmt`) | `validate`, `plan` |
+| `oficina-infra-k8s` | `main` | E2 completa: VPC, EC2/k3s, ECR, SG (faixas do API Gateway), contrato SSM, workspaces `hml`/`prod`, pipeline com apply/destroy | `terraform.yml` | `validate`, `plan` |
+| `oficina-infra-database` | `main` | E3 completa: RDS PG16, parameter group (force_ssl), SG, contrato SSM, workspaces, pipeline com apply/destroy | `terraform.yml` | `validate`, `plan` |
 | `oficina-auth-lambda` | `main` | README + `.gitignore` | `ci.yml` placeholder | `build-test`, `terraform-check` |
 
 Histórico das Fases 1-2 preservado nos 3 repos derivados; `kubeconfig-raw` e `patch.json` removidos
@@ -69,7 +71,7 @@ force-push ou delete; PR obrigatório; squash; checks obrigatórios com branch a
 Repo: só squash merge, apaga branch após merge. Push direto testado e recusado (`GH013`).
 
 **Environments (nos 4)**: `homologacao` (só branch `homolog`) e `producao` (só `main`, *required
-reviewer* = Victor, self-review permitido). **Nenhum secret definido ainda** (org ou environment).
+reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED_CIDR` e `AWS_*` (expiram por sessão; repor com `set-aws-session-secrets.sh`); env `homologacao` de `oficina-infra-database`: `DB_PASSWORD`. Demais (app, Lambda, `producao`) ainda não definidos.
 
 **Monorepo** `victorduarte31/tech-challenge-fiap`: arquivado, README com aviso e links (PR#8 mergeado).
 
@@ -87,6 +89,21 @@ reviewer* = Victor, self-review permitido). **Nenhum secret definido ainda** (or
 | `specs/` e `PROGRESSO.md` vivem em `oficina-app` | Repo principal; o monorepo não recebe mais commits |
 | Testes `@QuarkusTest` rodam em **PostgreSQL 16 via Dev Services** (H2 removido do perfil `test`) | V5/V6 usam recursos só do Postgres (TIMESTAMPTZ, `ALTER ... USING`, índice parcial, `CREATE ROLE`); H2 não executa as migrations e a suíte inteira não subia. Exige Docker (local e CI). `jdbc.url` fixa passou a `%prod`/`%docker` para o Dev Services ativar |
 | `order_number` atribuído pelo `WorkOrderRepositoryAdapter` no insert (provisório `TMP-…` → `OS-%06d`) | V5 tornou a coluna NOT NULL, mas o `create` salvava sem número; o formato vive em `WorkOrder.orderNumberFor` |
+| Bucket de state `oficina-tfstate-<account-id>`, passado por `-backend-config` | Nome de S3 é global e a conta Academy é reciclada; criado por `bootstrap-state-bucket.sh` (idempotente), usado por infra-k8s e infra-database |
+| Observabilidade da app por **porta** (`BusinessMetricsPort`) e correlação no **Vert.x** | Aplicação/domínio sem Micrometer; filtro JAX-RS não enxerga o 401/403 da segurança |
+| Cliente abre OS só com `vehicleId`+`notes` | Aceitar serviços/peças deixaria o cliente baixar estoque e fixar preço |
+| `destroy` é job do workflow `Terraform` (*Use workflow from: homolog*) | Ambiente `homologacao` só aceita a branch `homolog`; a `main` tem a versão antiga do arquivo |
+
+## Lições operacionais
+
+- Ler logs de CI com `gh run view <id> --log-failed` em vez de pedir print.
+- Windows não grava o bit de execução: `git update-index --chmod=+x` e chamar scripts via `bash scripts/x.sh` na pipeline.
+- Script que imprime valor consumido por `$(...)` deve silenciar o stdout dos demais comandos (`head-bucket` vazou JSON).
+- Tags de actions mudam de formato (`trivy-action` passou a `vX.Y.Z`): conferir com `gh api repos/<org>/<repo>/tags`.
+- Heredoc grande no shell da sessão quebra com aspas: usar a ferramenta de escrita para arquivos longos; `perl -0` em arquivo CRLF só com `?` nos padrões e `-i`.
+- `aws` CLI sem região no perfil local: usar `--region us-east-1` ou `$env:AWS_DEFAULT_REGION`.
+- Conferir pós-destroy com os serviços (`describe-instances`, `describe-volumes`, `describe-addresses`): a API de tags demora a esquecer recursos.
+- Valores de secrets e credenciais são sempre do usuário; nunca ecoar no chat (credenciais coladas devem ser tratadas como expostas).
 
 ## Histórico de sessões
 
