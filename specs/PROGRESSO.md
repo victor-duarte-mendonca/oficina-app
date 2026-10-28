@@ -23,26 +23,39 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 
 ## Próximo passo
 
-**Todo o código de E0–E7 está escrito e MERGEADO em `homolog` nos 4 repositórios, e a documentação (E8) e o runbook (E9) estão escritos.** Falta a
-**sessão AWS consolidada, em produção (`main`, workspace `prod`)**, que valida todos os ⬜ do checklist de uma vez. **Nada está de pé na AWS.**
+**Todo o código (E0–E7) e a documentação (E8) e o runbook (E9) estão escritos e MERGEADOS em `homolog` nos 4 repositórios.** Nada está de pé na AWS. Falta a
+**sessão AWS consolidada, em produção (`main`, workspace `prod`)**, que valida todos os ⬜ do checklist. Ela começa **na próxima sessão de trabalho** (combinado em 2026-10-28).
 
 > **Guia único da sessão: [`docs/VALIDACAO-PROD.md`](../docs/VALIDACAO-PROD.md)** (decisões, secrets, promoção `homolog` → `main`, roteiro passo a passo,
 > checklist com comandos e planos B). Operação e custo: [`docs/RUNBOOK.md`](../docs/RUNBOOK.md) e [`docs/orcamento.md`](../docs/orcamento.md).
 
-**Antes da sessão (do usuário, sem AWS)**
-1. **Decidir D1–D5** (`VALIDACAO-PROD.md` §1). A mais importante: **D1 — ligar o seed de usuários em `prod`?** O overlay `prod` tem `APP_SEED_ENABLED: "false"`:
-   sem admin, o smoke test da app e o fluxo completo do cliente no `smoke-gateway.sh` ficam **pulados** (verdes sem testar).
-2. **Mergear** os PRs abertos de documentação (app, auth-lambda, infra-k8s, infra-database) e depois **não** promover para `main` ainda: a promoção
-   `homolog` → `main` **dispara o deploy de produção**; fazê-la **durante a sessão**, repositório a repositório, na ordem de subida.
-3. **Secrets do Environment `producao`** (tabela completa em `VALIDACAO-PROD.md` §3.1) e **um** par JWT (`oficina-app/generate-keys.sh`, a mesma chave na app e no
-   Lambda). Conta New Relic (D2) é opcional: sem ela nada quebra, a E7 só não é validada.
-4. Conferir o `ALLOWED_CIDR` (seu IP mudou?) e ter `aws` CLI, `gh`, `hey` e Postman.
+### PR aberto de propósito: `oficina-app#22` (NÃO mergear antes da sessão)
 
-**Na sessão** (4 h, ≈ US$ 0,31): `set-aws-session-secrets.sh` → infra-k8s → infra-database → app → auth-lambda → (Observability) → conferências → carga/HPA → **destroy na
-ordem inversa** + varredura de órfãos. `scripts/k3s-exec.sh prod "<kubectl ...>"` dá acesso ao cluster por SSM (sem SSH, sem expor a 6443).
+Liga o seed de usuários em `prod` (`APP_SEED_ENABLED: "true"`) e faz o `deploy.yml` exigir `APP_SEED_ADMIN_PASSWORD`/`APP_SEED_MECHANIC_PASSWORD` sempre que o overlay ligar o seed.
+**Como a `main` publica em produção, o #22 fica aberto até a sessão**: mergear em `homolog` já não dispara nada na AWS, mas ele vai para `main` na promoção e então o deploy de prod
+sobe com o seed. Decisão D1 (usuário, 2026-10-28): ligar para a validação e **reverter para `"false"` depois da gravação do vídeo**.
 
-**Se algo falhar:** `gh run view <id> --log-failed`; planos B por risco em `VALIDACAO-PROD.md` §7 (`apigateway:*`, `LabRole`, SnapStart, `reserved_concurrent_executions`,
-`ssm:GetParameter` do instance profile, memória do node). Correções vão por `feature/x` → `homolog` → `main`.
+### Protocolo de abertura da próxima sessão (o Claude faz isto ANTES de qualquer outra coisa)
+
+1. Sincronizar os 4 repos em `homolog` (`git fetch` + `merge --ff-only`) e ler este arquivo e `docs/VALIDACAO-PROD.md`.
+2. **Levantar tudo que está pendente** e apresentar ao usuário numa lista única, separada em: (a) **do usuário** (decisões D2–D5, secrets de `producao`, par JWT, conta New Relic,
+   `ALLOWED_CIDR`, credenciais do Academy, merge do #22), (b) **do Claude** (PRs abertos: `gh pr list` nos 4 repos; promoções `homolog` → `main` a abrir; PR de sincronização, se houver divergência
+   por squash), (c) **conferências automáticas**: o que já dá para checar sem AWS (secrets existentes via `gh secret list --env producao -R ...` — só nomes, nunca valores —, estado dos PRs, CI verde na `homolog`).
+3. Só então seguir `VALIDACAO-PROD.md` §4 (passo 0 em diante). **Avisar o usuário antes do primeiro passo que precise da AWS de pé.**
+
+### Pendente, em uma olhada (estado em 2026-10-28)
+
+| Dono | Item | Onde |
+|---|---|---|
+| Usuário | Mergear o PR de docs de fechamento (se ainda aberto) | oficina-app |
+| Usuário | **Secrets de `producao`** nos 4 repos e **um** par JWT (mesma chave na app e no Lambda); inclui `APP_SEED_ADMIN_PASSWORD`/`APP_SEED_MECHANIC_PASSWORD` (D1) e, no auth-lambda, `APP_SEED_ADMIN_PASSWORD` | `VALIDACAO-PROD.md` §3.1–3.2 |
+| Usuário | D2 conta New Relic (opcional: sem ela a E7 não é validada, nada quebra) · D3 aceitar 401 para anônimo · D4 aceitar trace começando na app · D5 `soat-architecture` | `VALIDACAO-PROD.md` §1 |
+| Usuário | Conferir `ALLOWED_CIDR` (IP mudou?), ter `aws` CLI, `gh`, `hey`, Postman; no dia: Start Lab + `set-aws-session-secrets.sh` | `VALIDACAO-PROD.md` §3.3–3.4 |
+| Claude | Abrir os PRs `homolog` → `main` **durante a sessão**, um repo por vez na ordem de subida; PR de sincronização `main` → `homolog` se o squash divergir | `VALIDACAO-PROD.md` §2 |
+| Claude | Executar o roteiro, marcar os ⬜ que virarem ✅, preencher `docs/orcamento.md`, destruir tudo e varrer órfãos | `VALIDACAO-PROD.md` §4–§8 |
+| Depois | Reverter o seed de `prod`; documento PDF e vídeo (do usuário) | PROGRESSO "Pendências" |
+
+**Se algo falhar:** `gh run view <id> --log-failed`; planos B por risco em `VALIDACAO-PROD.md` §7. Correções vão por `feature/x` → `homolog` → `main`.
 
 **Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
 
@@ -115,6 +128,7 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 - [ ] Definir `DB_PASSWORD` no environment `producao` de `oficina-infra-database` — **feito** em 2026-10-19; os demais secrets de `producao` só quando for subir `prod`
 - [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
+- [ ] **Depois da gravação do vídeo: reverter o seed de `prod`** (`k8s/overlays/prod/kustomization.yaml` → `APP_SEED_ENABLED: "false"`), via PR
 
 **Do Claude (sem AWS)**
 - [x] Religar a base do #4 para `homolog` com rebase (feito)
@@ -300,3 +314,4 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
   **Pronto para a sessão AWS** do lado do código; sem AWS resta escrever E7/E8/E9.
 - **2026-10-28 (sessão 8, continuação)** — **E7 escrita sem AWS** em 4 PRs. `oficina-app#19`: `quarkus-opentelemetry` (desligado por padrão; liga com `NEW_RELIC_LICENSE_KEY` no Secret), amostragem por ambiente, testes de `traceId`/`spanId` no MDC e de vazamento de senha, anotação `newrelic.io/scrape`, `correlationId` aceita `=`; 431/431. `oficina-infra-k8s#8`: `nri-bundle` 8.0.39 via HelmChart do k3s com licença no SSM (chart renderizado com `helm template`; achado do `integrations_filter`). `oficina-infra-k8s#9`: `observability/` (provider `newrelic`: 2 dashboards, 6 políticas/8 condições, Synthetics) com workflow que ignora sem sessão/secrets. `oficina-auth-lambda#5`: forwarder de logs (Node, 7 testes) e `X-Correlation-Id` no gateway. Lição: heredoc grande com aspas quebrou o shell de novo (usar Write); `perl -0` em arquivo com `$` no replacement pediu cuidado.
 - **2026-10-28 (sessão 8, fechamento)** — **E8 e E9 escritas sem AWS.** `oficina-app/docs/`: 17 ADRs (`adr/`) e 3 RFCs (`rfc/`) a partir das specs e do que foi implementado (ADR 0010/0011 descrevem os desvios: só os traces são OTLP; SSM passou a conter a licença New Relic), `arquitetura.md` (componentes com a fronteira da VPC, sequência de autenticação e de abertura/aprovação de OS), `erd.md` ligado à RFC 0002, `RUNBOOK.md` (substitui o `SESSION-GUIDE.md` da Fase 2), `orcamento.md` (medições a preencher) e `VALIDACAO-PROD.md`; `scripts/k3s-exec.sh` (kubectl por SSM Run Command). Seção Documentação nos READMEs dos outros 3 repos (auth-lambda#6, infra-k8s#10, infra-database#3). **Achados ao documentar a validação em produção:** (1) `prod` tem seed desligado, então smoke test da app e fluxo do cliente do `smoke-gateway.sh` ficam pulados (decisão D1); (2) o throttling do gateway (50 rps) impede gerar carga de HPA pela URL do gateway: usar o EIP; (3) merge em `main` dispara o deploy de prod, e o `apply` dos repos de infra não ignora sessão expirada: promover só durante a sessão; (4) squash diverge `homolog` e `main`: PR de sincronização. Correção no diagrama: transição inválida responde 422 (não 409).
+- **2026-10-28 (sessão 8, encerramento)** — Decisão D1: seed ligado em `prod` (`oficina-app#22`, **deixado aberto de propósito até a sessão em produção**: o merge em `main` publica em produção). Combinado: a **próxima sessão começa levantando tudo que está pendente** (protocolo em "Próximo passo") e segue para a validação em produção. Estado ao encerrar: 4 repos em `homolog` sem PR aberto além do #22; E0–E9 escritas; nada na AWS.
