@@ -11,7 +11,7 @@
 
 | # | Decisão | Por que importa | Recomendação |
 |---|---|---|---|
-| D1 | **Ligar o seed de usuários em `prod`?** O overlay `prod` define `APP_SEED_ENABLED: "false"` | Sem seed não existe admin em `prod`: o smoke test da app pula o login e o `smoke-gateway.sh` **pula o fluxo completo do cliente** (precisa de um admin para criar o cliente). Também não há como logar na demonstração | Ligar só para a validação: PR em `oficina-app` mudando `k8s/overlays/prod/kustomization.yaml` para `"true"`, com `APP_SEED_ADMIN_PASSWORD` e `APP_SEED_MECHANIC_PASSWORD` fortes em `producao`. Aceitar que há um admin conhecido no ambiente de laboratório; reverter depois da gravação |
+| D1 | **Seed de usuários em `prod`: DECIDIDO, ligado** (PR `feature/prod-seed-validacao`; o overlay `prod` passa a `APP_SEED_ENABLED: "true"`). *Pergunta original:* ligar o seed? | Sem seed não existe admin em `prod`: o smoke test da app pula o login e o `smoke-gateway.sh` **pula o fluxo completo do cliente** (precisa de um admin para criar o cliente). Também não há como logar na demonstração | Ligar só para a validação: PR em `oficina-app` mudando `k8s/overlays/prod/kustomization.yaml` para `"true"`, com `APP_SEED_ADMIN_PASSWORD` e `APP_SEED_MECHANIC_PASSWORD` fortes em `producao`. Aceitar que há um admin conhecido no ambiente de laboratório; reverter depois da gravação |
 | D2 | **Conta New Relic agora?** | Sem ela a E7 fica sem validar (traces, métricas, logs, dashboards, alertas). Nada quebra sem ela | Criar a conta (free tier) **antes** da sessão e definir os secrets da §3 |
 | D3 | Filtro do gateway na app: anônimo recebe 401, não 403 | Hoje 403 só vale para autenticado sem a chave. Mudar exige filtro no Vert.x | Aceitar 401 (já documentado no ADR 0007) |
 | D4 | HTTP API não propaga W3C: o trace OTLP começa na aplicação | A spec 05 §10 pedia "trace único gateway → aplicação"; a correlação gateway↔app é por `X-Correlation-Id` | Aceitar e mostrar a correlação por log no vídeo |
@@ -46,13 +46,13 @@ Valores são **sempre do usuário**; o Claude nunca os repete. "Igual" = o **mes
 | `oficina-app` | `LAMBDA_RO_PASSWORD` | sim | senha do papel `oficina_auth_ro`; **igual** ao do `oficina-auth-lambda` |
 | `oficina-app` | `JWT_PRIVATE_KEY_PEM` | sim | par gerado **uma vez**; **igual** ao do `oficina-auth-lambda` |
 | `oficina-app` | `APP_GATEWAY_KEY` | sim em `prod` | **igual** ao do `oficina-auth-lambda` |
-| `oficina-app` | `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_MECHANIC_PASSWORD` | só com D1 | senhas fortes |
+| `oficina-app` | `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_MECHANIC_PASSWORD` | **sim** (o deploy falha sem elas enquanto o overlay tiver o seed ligado) | senhas fortes |
 | `oficina-app` | `MAILER_HOST`, `MAILER_USERNAME`, `MAILER_PASSWORD` | não | sem eles o e-mail falha e é contado (a transição é preservada) |
 | `oficina-app` | `NEW_RELIC_LICENSE_KEY` | só com D2 | licença de **ingestão** (traces) |
 | `oficina-auth-lambda` | `LAMBDA_RO_PASSWORD` | sim | **igual** ao da app |
 | `oficina-auth-lambda` | `JWT_PRIVATE_KEY_PEM` | sim | **a mesma** chave privada da app |
 | `oficina-auth-lambda` | `APP_GATEWAY_KEY` | sim | **o mesmo** valor da app |
-| `oficina-auth-lambda` | `APP_SEED_ADMIN_PASSWORD` | recomendado (D1) | habilita o fluxo completo do cliente no smoke test |
+| `oficina-auth-lambda` | `APP_SEED_ADMIN_PASSWORD` | **sim** (D1) | **igual** ao da app;  habilita o fluxo completo do cliente no smoke test |
 | `oficina-infra-k8s` | `NEW_RELIC_LICENSE_KEY` | só com D2 | **a mesma** licença; precisa existir **antes** do `apply` (o k3s a lê no boot) |
 | `oficina-infra-k8s` | `NEW_RELIC_API_KEY`, `NEW_RELIC_ACCOUNT_ID`, `ALERT_EMAIL` | só com D2 | User key `NRAK-...` (**não** é a licença), id da conta e e-mail dos alertas |
 
@@ -145,7 +145,7 @@ Marque cada passo; a coluna "Esperado" é o critério. Falha em qualquer passo: 
 - [ ] **401 sem header, 403 com token recusado**: `curl -i $API/me` (sem `Authorization`) → 401; com token adulterado → 403.
 - [ ] Access log do gateway com `integrationLatency` vazio nas negadas: `aws logs filter-log-events --log-group-name /aws/apigateway/oficina-prod --limit 20`.
 - [ ] **Throttling → 429** em `POST /auth/token` (o `smoke-gateway.sh` do passo 4 cobre; ou 40 chamadas em sequência).
-- [ ] **Fluxo completo do cliente** pelo gateway (admin cria cliente → CPF → token → `/me` → abre OS): só com D1.
+- [ ] **Fluxo completo do cliente** pelo gateway (admin cria cliente → CPF → token → `/me` → abre OS).
 - [ ] `curl -i http://$EIP/me/work-orders -H "Authorization: Bearer $TOKEN"` do **seu IP**, sem `X-Gateway-Key` → **403**.
 - [ ] `X-Correlation-Id` do gateway chega à app: a resposta de `$API/me` traz `X-Correlation-Id` igual ao `requestId` do access log.
 - [ ] Coleção Postman contra o gateway.
@@ -187,5 +187,5 @@ Marque cada passo; a coluna "Esperado" é o critério. Falha em qualquer passo: 
 2. Marcar no `specs/PROGRESSO.md` cada ⬜ que virou ✅ e registrar achados novos.
 3. Correções encontradas em `prod` seguem o fluxo: `feature/x` a partir de `homolog` → PR para `homolog` → PR `homolog` → `main` (nunca
    feature direto para `main`). O merge em `main` redispara o deploy de produção, então só com sessão ativa.
-4. Se a decisão D1 foi "ligar o seed", reverter `APP_SEED_ENABLED` para `"false"` depois da gravação do vídeo.
+4. **Reverter o seed**: D1 ligou `APP_SEED_ENABLED: "true"` no overlay `prod`; depois da gravação do vídeo, PR voltando para `"false"` (um admin conhecido em produção não deve ficar).
 5. Entregas do usuário fora deste plano: documento PDF e vídeo de até 15 min.
