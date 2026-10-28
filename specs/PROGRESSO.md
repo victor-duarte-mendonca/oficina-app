@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-28** (sessão 8 — apply manual nos 2 repos de infra mergeado; tudo que não depende de AWS para a sessão AWS está pronto).
+> Última atualização: **2026-10-28** (sessão 8 — apply manual nos repos de infra mergeado; **E7 escrita com 4 PRs abertos**; tudo que não depende de AWS para a sessão AWS está pronto).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -17,7 +17,7 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 | E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ✅ concluída (código + Terraform; validação em AWS pendente) |
 | — Deploy da aplicação (pipeline; spec 08 §6) | 08 | oficina-app | ✅ mergeado (app#15); validação em AWS pendente |
 | E6 API Gateway + authorizer | 03 | oficina-auth-lambda | ✅ mergeada (#3 e #4); validação em AWS pendente |
-| E7 Observabilidade fim-a-fim (New Relic) | 05 | app + infra + lambda | ⬜ |
+| E7 Observabilidade fim-a-fim (New Relic) | 05 | app + infra + lambda | 🟡 código escrito, 4 PRs abertos (app#19, infra-k8s#8 e #9, auth-lambda#5); validação em AWS pendente |
 | E8 Documentação arquitetural (ADRs, diagramas, READMEs) | 09 | todos | ⬜ |
 | E9 Runbook de sessão e custos | 10 | oficina-infra-k8s | ⬜ |
 
@@ -47,7 +47,7 @@ inclusive o `terraform-check` completo no runner. O deploy do auth-lambda no mer
    4. `oficina-auth-lambda` → *Actions → Deploy → Run workflow* (deixe `confirm` vazio) · valida E5 e E6 (SnapStart, gateway, authorizer, 429, fluxo do cliente)
    5. Conferências manuais: de **sua máquina**, `curl http://<eip>/me/work-orders` com token válido e **sem** `X-Gateway-Key` → **403**; Postman com `gatewayUrl`
    6. **Destroy** nesta ordem: `oficina-auth-lambda` → `oficina-infra-database` → `oficina-infra-k8s`; conferir restos (`describe-instances`, `describe-volumes`, `describe-addresses`)
-5. Depois: **E7** (observabilidade: `OTEL_*`/`NEW_RELIC_*`, agentes), **E8** (documentação), **E9** (runbook). PRs `homolog` → `main` só quando quiser subir `prod`.
+5. **E7 já está escrita** (ver "Pendências"): mergear os PRs **na ordem** infra-k8s#8 → #9 (religar com rebase; mesmo ponto do README), app#19, auth-lambda#5. Para ligar a observabilidade na sessão AWS o usuário cria a conta New Relic (free tier) e define, **no environment `homologacao`**: `NEW_RELIC_LICENSE_KEY` (licença de **ingestão**; em `oficina-infra-k8s` e `oficina-app`), e em `oficina-infra-k8s` também `NEW_RELIC_API_KEY` (User key `NRAK-...`), `NEW_RELIC_ACCOUNT_ID` e `ALERT_EMAIL`. **Sem esses secrets nada quebra**: agentes e traces ficam desligados e o `Observability` ignora o apply. Depois: **E8** (documentação), **E9** (runbook). PRs `homolog` → `main` só quando quiser subir `prod`.
 
 **Se algo falhar na sessão AWS:** cada pipeline lê o erro com `gh run view <id> --log-failed`. Riscos já mapeados: `apigateway:*` e a política do log group na conta Academy
 (plano B na spec 03 §8), `LabRole` para Lambda em VPC, `reserved_concurrent_executions=10` (senão `-1`), SnapStart indisponível (plano B: Node).
@@ -103,6 +103,15 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 - ⬜ access log do gateway com `integrationLatency` vazio nas requisições negadas · ⬜ throttling → 429 em `POST /auth/token` · ⬜ **fluxo completo do cliente pelo gateway** (cria cliente → `/auth/token` → `/me`)
 - ⬜ `curl` direto no EIP sem `X-Gateway-Key` → 403 (manual, do seu IP) · ⬜ coleção Postman contra o gateway
 
+**E7 — Observabilidade (código escrito; 4 PRs abertos: oficina-app#19, infra-k8s#8 e #9, auth-lambda#5)**
+- ✅ app: `quarkus-opentelemetry` (desligado por padrão), amostragem 1.0 hml / 0.2 prod, `traceId`/`spanId` no MDC (teste), senha de login falho **não** vai a nenhum log (teste), `correlationId` aceita `=` · ✅ suíte completa 431/431
+- ✅ infra-k8s: `nri-bundle` 8.0.39 renderizado com `helm template` (hml e prod), todo container com request/limit de memória; `user_data` renderizado e `bash -n`; terraform/tflint/trivy/actionlint limpos
+- ✅ `observability/` (Terraform `newrelic`): validate, 2 dashboards (11 widgets, JSON válido), 6 políticas/8 condições; ✅ log-forwarder: 7 testes `node --test`
+- ⬜ licença New Relic lida do SSM pela EC2 (LabInstanceProfile com `ssm:GetParameter`) e agentes de pé · ⬜ **`kubectl top nodes`/`top pods -A`** com folga para o HPA (hml t3.small sem prometheus-agent)
+- ⬜ prometheus-agent coleta `/q/metrics` (anotação `newrelic.io/scrape`) · ⬜ traces OTLP chegam ao New Relic (`FROM Span`) · ⬜ **confirmar as NRQL** contra dados reais (nomes de span, `_sum`/`_count` do timer, `K8sContainerSample.reason`) e corrigir os JSON/`alerts.tf`
+- ⬜ dashboards carregados do JSON e com dados · ⬜ 6 políticas existem e **2 disparam de propósito** (derrubar pod; forçar transição inválida) · ⬜ monitor Synthetics em `/health` + alerta de disponibilidade
+- ⬜ logs do gateway e dos Lambdas no New Relic com `correlationId` (forwarder; LabRole aceita assinatura/permissão) · ⬜ gateway repassa `X-Correlation-Id` e a app o usa · ⬜ `grep` nos logs: nenhum CPF completo nem token
+
 ## Pendências
 
 **Do usuário**
@@ -118,7 +127,9 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 **Do Claude (sem AWS)**
 - [x] Religar a base do #4 para `homolog` com rebase (feito)
 - [x] Disparo manual de `apply` em `oficina-infra-k8s` e `oficina-infra-database` (feito na sessão 8: infra-k8s#7, infra-database#2); `plan` em PR agora ignora sessão expirada
-- [ ] Escrever, sem AWS: código da E7 (observabilidade), E8 (documentação) e E9 (runbook); validar só na sessão AWS
+- [x] Código da E7 escrito (4 PRs abertos); validar só na sessão AWS
+- [ ] Escrever, sem AWS: E8 (documentação arquitetural) e E9 (runbook; incluir "conferir o comentário do plan" e o `kubectl top` da E7)
+- [ ] (Decisão do usuário) o HTTP API não propaga W3C: aceitar que o trace começa na aplicação, ou avaliar X-Ray no gateway (fora do escopo da spec)
 - [ ] (Decisão do usuário) filtro do gateway no Vert.x, para o 403 valer também para anônimos — hoje anônimo recebe 401 (ver "Decisões")
 
 **Validações de primeira sessão AWS** (spec 00 §6, spec 03 §8) — fazer na sessão consolidada:
@@ -177,6 +188,11 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 | Authorizer em módulo próprio, **fora da VPC**, sem JDBC, sem rede e sem segredo (só chave pública) | spec 03 §4: se ele cair, todas as rotas protegidas param — mínimo de coisas que podem quebrá-lo |
 | **Correção do E4:** o `GatewayKeyFilter` (JAX-RS) roda **depois** da autorização por papel (RESTEasy Reactive) | anônimo sem token → **401**; token válido sem a chave → **403**. Não vaza nada. Para 403 também a anônimos, o filtro precisa ser do Vert.x (como o de correlação) |
 | `docker-compose` passou a levar `LAMBDA_RO_PASSWORD` e `APP_GATEWAY_KEY` | a app não subia no compose desde a E1 (placeholder do Flyway vazio é tratado como ausente) |
+- **E7 — agentes por HelmChart do k3s, não `helm_release`** (desvio da spec 06 §2): o API 6443 só é acessível por túnel SSM e a EC2 nem existe quando o provider seria configurado. O `user_data` grava o manifesto `HelmChart` e o Secret da licença em `/var/lib/rancher/k3s/server/manifests`; a licença vem de um SecureString no SSM (`/oficina/<env>/newrelic_license_key`), nunca do `user_data`. Sem a licença o cluster sobe sem agentes. Só vale para **instância nova**.
+- **E7 — o job `default` do prometheus-agent só coleta alvos de integrações conhecidas** (`integrations_filter`): a anotação `prometheus.io/scrape` da app não basta; o Deployment ganhou `newrelic.io/scrape: "true"`. hml (t3.small) roda sem prometheus-agent; control plane do k3s e metadata-injection desligados; `global.region` é obrigatório com Secret próprio.
+- **E7 — o `$context.requestId` do HTTP API termina em `=`**, que o `SAFE_ID` da app rejeitava (geraria UUID novo): agora aceito, e o gateway passa `X-Correlation-Id` (overwrite). O HTTP API **não** propaga contexto W3C: o trace OTLP começa na aplicação; o gateway entra pela correlação de logs, não como span (a spec 05 §10 pedia "trace único atravessando gateway → aplicação": registrado como limite).
+- **E7 — dashboards/alertas em Terraform `newrelic`** numa raiz separada (`oficina-infra-k8s/observability/`, state `oficina/observability/<ws>`), com workflow próprio que **ignora o apply sem sessão AWS ou sem secrets** (`NEW_RELIC_API_KEY`, `NEW_RELIC_ACCOUNT_ID`, `ALERT_EMAIL`). NR só tem critical/warning: a severidade da spec vai no nome da política.
+- **E7 — forwarder de logs próprio** (Node 20, fora da VPC) em vez do `newrelic-log-ingestion` do SAR (cria IAM role, bloqueado no Academy). Liga sozinho quando existe `/oficina/<env>/newrelic_license_key`. `service.name` mantido `oficina-mecanica` (nome atual), não `oficina-app` da spec.
 
 ## Lições operacionais
 
@@ -289,3 +305,4 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
   workspace × branch; `apply` com `!cancelled()` para o skip do `validate` não se propagar; actionlint limpo; READMEs atualizados. O CI dos PRs falhou no `plan` por secrets `AWS_*` expirados
   (a checagem só via "não vazio" e o `configure-aws-credentials` rejeitava o token): `plan` passou a testar `sts get-caller-identity` e a pular com aviso, como o auth-lambda. Ver "Como saber se a AWS deu certo".
   **Pronto para a sessão AWS** do lado do código; sem AWS resta escrever E7/E8/E9.
+- **2026-10-28 (sessão 8, continuação)** — **E7 escrita sem AWS** em 4 PRs. `oficina-app#19`: `quarkus-opentelemetry` (desligado por padrão; liga com `NEW_RELIC_LICENSE_KEY` no Secret), amostragem por ambiente, testes de `traceId`/`spanId` no MDC e de vazamento de senha, anotação `newrelic.io/scrape`, `correlationId` aceita `=`; 431/431. `oficina-infra-k8s#8`: `nri-bundle` 8.0.39 via HelmChart do k3s com licença no SSM (chart renderizado com `helm template`; achado do `integrations_filter`). `oficina-infra-k8s#9`: `observability/` (provider `newrelic`: 2 dashboards, 6 políticas/8 condições, Synthetics) com workflow que ignora sem sessão/secrets. `oficina-auth-lambda#5`: forwarder de logs (Node, 7 testes) e `X-Correlation-Id` no gateway. Lição: heredoc grande com aspas quebrou o shell de novo (usar Write); `perl -0` em arquivo com `$` no replacement pediu cuidado.
