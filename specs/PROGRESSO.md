@@ -30,7 +30,8 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 > checklist com comandos e planos B). Operação e custo: [`docs/RUNBOOK.md`](../docs/RUNBOOK.md) e [`docs/orcamento.md`](../docs/orcamento.md).
 
 **Antes da sessão (do usuário, sem AWS)**
-1. **Decidir D1–D5** (`VALIDACAO-PROD.md` §1). **D1 decidida: seed LIGADO em `prod`** (PR `feature/prod-seed-validacao`; o deploy exige `APP_SEED_ADMIN_PASSWORD` e `APP_SEED_MECHANIC_PASSWORD` em `producao`). **Reverter para `"false"` depois da gravação do vídeo.** Restam D2–D5.
+1. **Decidir D1–D5** (`VALIDACAO-PROD.md` §1). A mais importante: **D1 — ligar o seed de usuários em `prod`?** O overlay `prod` tem `APP_SEED_ENABLED: "false"`:
+   sem admin, o smoke test da app e o fluxo completo do cliente no `smoke-gateway.sh` ficam **pulados** (verdes sem testar).
 2. **Mergear** os PRs abertos de documentação (app, auth-lambda, infra-k8s, infra-database) e depois **não** promover para `main` ainda: a promoção
    `homolog` → `main` **dispara o deploy de produção**; fazê-la **durante a sessão**, repositório a repositório, na ordem de subida.
 3. **Secrets do Environment `producao`** (tabela completa em `VALIDACAO-PROD.md` §3.1) e **um** par JWT (`oficina-app/generate-keys.sh`, a mesma chave na app e no
@@ -114,7 +115,6 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 - [ ] Definir `DB_PASSWORD` no environment `producao` de `oficina-infra-database` — **feito** em 2026-10-19; os demais secrets de `producao` só quando for subir `prod`
 - [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
-- [ ] **Depois da gravação do vídeo: reverter o seed de `prod`** (`k8s/overlays/prod/kustomization.yaml` → `APP_SEED_ENABLED: "false"`), via PR
 
 **Do Claude (sem AWS)**
 - [x] Religar a base do #4 para `homolog` com rebase (feito)
