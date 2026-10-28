@@ -14,6 +14,7 @@ patches:
         namespace: oficina
       data:
         APP_ENV: "hml"
+        OTEL_TRACES_SAMPLER_ARG: "1.0"
         APP_SEED_ENABLED: "true"
   - patch: |-
       apiVersion: apps/v1

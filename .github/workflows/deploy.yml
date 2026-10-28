@@ -186,6 +186,7 @@ jobs:
           MAILER_PASSWORD: ${{ secrets.MAILER_PASSWORD }}
           APP_SEED_ADMIN_PASSWORD: ${{ secrets.APP_SEED_ADMIN_PASSWORD }}
           APP_SEED_MECHANIC_PASSWORD: ${{ secrets.APP_SEED_MECHANIC_PASSWORD }}
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
         run: |
           # O endpoint do RDS vem do contrato SSM publicado pelo oficina-infra-database; nada é copiado à mão.
           if ! DB_HOST="$(aws ssm get-parameter --name "/oficina/${STACK_ENV}/db_endpoint" \
@@ -205,6 +206,8 @@ jobs:
             --from-literal=MAILER_PASSWORD="${MAILER_PASSWORD:-}" \
             --from-literal=APP_SEED_ADMIN_PASSWORD="${APP_SEED_ADMIN_PASSWORD:-}" \
             --from-literal=APP_SEED_MECHANIC_PASSWORD="${APP_SEED_MECHANIC_PASSWORD:-}" \
+            --from-literal=NEW_RELIC_LICENSE_KEY="${NEW_RELIC_LICENSE_KEY:-}" \
+            --from-literal=OTEL_SDK_DISABLED="$([ -n "${NEW_RELIC_LICENSE_KEY:-}" ] && echo false || echo true)" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Secret das chaves JWT (o mesmo par para todas as réplicas)

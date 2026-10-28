@@ -131,6 +131,7 @@ ambiente é um cluster distinto ([spec 06](../specs/06-infra-k8s-terraform.md) �
 | Réplicas / HPA | 1 → 2 | 2 → 4 |
 | `APP_SEED_ENABLED` | `true` (demonstração) | `false` |
 | `APP_ENV` (campo `env` nos logs) | `hml` | `prod` |
+| `OTEL_TRACES_SAMPLER_ARG` (fração de traces; só vale com `NEW_RELIC_LICENSE_KEY` no Secret) | `1.0` | `0.2` |
 
 ```bash
 ENV=hml   # ou prod
