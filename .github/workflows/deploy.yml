@@ -128,6 +128,9 @@ jobs:
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       IMAGE: ${{ needs.image.outputs.image }}
     steps:
+      # Antes da validação: ela lê o overlay do ambiente para saber se o seed de usuários está ligado.
+      - uses: actions/checkout@v4
+
       - name: Secrets do environment definidos?
         env:
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
@@ -146,8 +149,9 @@ jobs:
           if [ "$STACK_ENV" = "prod" ]; then
             # Em produção o filtro do gateway não pode ficar desligado.
             [ -n "${APP_GATEWAY_KEY:-}" ] || missing="$missing APP_GATEWAY_KEY"
-          else
-            # hml liga o seed de usuários (overlay): sem as senhas não há como logar na demonstração.
+          fi
+          # Seed ligado no overlay do ambiente: sem as senhas não há como logar (e o smoke test autenticado seria pulado).
+          if grep -q 'APP_SEED_ENABLED: "true"' "k8s/overlays/${STACK_ENV}/kustomization.yaml"; then
             for name in APP_SEED_ADMIN_PASSWORD APP_SEED_MECHANIC_PASSWORD; do
               [ -n "${!name:-}" ] || missing="$missing $name"
             done
