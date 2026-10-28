@@ -493,7 +493,7 @@ substituíveis, requisito para o HPA escalar horizontalmente sem afetar sessões
 assinatura do JWT vêm de um Secret montado como volume, para que **todas as réplicas assinem com o mesmo
 par** (do contrário, um token emitido por um pod seria rejeitado por outro).
 
-**Infraestrutura provisionada (Terraform, detalhe em [`infra/README.md`](infra/README.md)):**
+**Infraestrutura provisionada (Terraform, detalhe em [`oficina-infra-k8s`](https://github.com/victor-duarte-mendonca/oficina-infra-k8s) e [`oficina-infra-database`](https://github.com/victor-duarte-mendonca/oficina-infra-database) (README de cada um)):**
 
 | Recurso            | Nome               | Observação                                                      |
 |--------------------|--------------------|-----------------------------------------------------------------|
@@ -582,7 +582,7 @@ kubectl get pods,hpa,svc,ingress -n oficina
 ### Provisionamento da infraestrutura (Terraform)
 
 Passo a passo completo (bootstrap do backend remoto, variáveis obrigatórias, custo estimado e destruição ao
-final da sessão) em [`infra/README.md`](infra/README.md):
+final da sessão) em [`oficina-infra-k8s`](https://github.com/victor-duarte-mendonca/oficina-infra-k8s) e [`oficina-infra-database`](https://github.com/victor-duarte-mendonca/oficina-infra-database) (README de cada um):
 
 ```bash
 cd infra
@@ -600,7 +600,7 @@ terraform output application_url
 - Swagger/OpenAPI (gerado automaticamente pelo Quarkus/SmallRye): `http://localhost:8080/swagger-ui` —
   especificação OpenAPI em `http://localhost:8080/openapi`. Em perfil `prod` o Swagger fica
   **desabilitado** por hardening; use a collection abaixo contra o ambiente publicado.
-- Collection Postman: [`postman/Oficina-Mecanica.postman_collection.json`](postman/Oficina-Mecanica.postman_collection.json).
+- Collection Postman: [`postman/Oficina-Demo-Fase2.postman_collection.json`](postman/Oficina-Demo-Fase2.postman_collection.json).
 
 ### Vídeo demonstrativo
 
