@@ -16,22 +16,21 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 | E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ✅ concluída (código e CI; deploy em cluster pendente) |
 | E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ✅ concluída (código + Terraform; validação em AWS pendente) |
 | — Deploy da aplicação (pipeline; spec 08 §6) | 08 | oficina-app | ✅ mergeado (app#15); validação em AWS pendente |
-| E6 API Gateway + authorizer | 03 | oficina-auth-lambda | 🟨 código escrito; PRs #3 e #4 abertos |
+| E6 API Gateway + authorizer | 03 | oficina-auth-lambda | ✅ mergeada (#3 e #4); validação em AWS pendente |
 | E7 Observabilidade fim-a-fim (New Relic) | 05 | app + infra + lambda | ⬜ |
 | E8 Documentação arquitetural (ADRs, diagramas, READMEs) | 09 | todos | ⬜ |
 | E9 Runbook de sessão e custos | 10 | oficina-infra-k8s | ⬜ |
 
 ## Próximo passo
 
-**O código de E0–E6 e do deploy da aplicação está escrito.** Falta mergear os 2 PRs da E6 e fazer a **sessão AWS
-consolidada**, que valida tudo de uma vez. **Nada está de pé na AWS** (conferido na sessão 6).
+**O código de E0–E6 e do deploy da aplicação está escrito e MERGEADO em `homolog` nos 4 repositórios.** Falta só a **sessão AWS
+consolidada**, que valida tudo de uma vez. **Nada está de pé na AWS** (conferido na sessão 6). Não há PR pendente (exceto, se ainda aberto, o de docs deste arquivo).
 
-**Estado dos PRs:** `oficina-auth-lambda#3` (authorizer, base `homolog`) e `#4` (gateway, **empilhado** sobre o #3) estão **abertos**.
-O deploy da aplicação (`oficina-app#15`) já foi mergeado e, num push sem infra, passou verde com um aviso (deploy ignorado).
+**Estado:** `oficina-auth-lambda#3` (authorizer) e `#4` (gateway) **mergeados**; o #4 foi religado a `homolog` com rebase (árvore idêntica) e passou em todos os checks,
+inclusive o `terraform-check` completo no runner. O deploy do auth-lambda no merge passou verde: `stack` detectou a sessão AWS inativa e pulou o `apply` com aviso.
 
 **Ao retomar (ordem):**
-1. **Usuário:** mergear o **#3**. **Não fazer `git pull` na branch do #4**: avisar o Claude, que religa a base para `homolog` com **rebase**.
-   (Na E5, a reconciliação manual de um PR empilhado depois do squash **perdeu o `ci.yml` e o README** — ver "Lições".) Depois mergear o **#4**.
+1. ~~Mergear #3 e #4~~ — **feito** (sessão 7). Regra que fica: PR empilhado = o Claude religa a base com `rebase`; o usuário não faz `git pull` na branch empilhada (ver "Lições").
 2. **Sem AWS — tarefa a fazer antes da sessão AWS:** `oficina-infra-k8s` e `oficina-infra-database` só fazem `apply` em **push**; o `workflow_dispatch`
    deles é só de destroy. Hoje, para subir `hml` de novo, é preciso *Re-run all jobs* do último run de push em `homolog`. Recomendado: dar a eles o mesmo
    disparo manual de apply do `oficina-auth-lambda` (`workflow_dispatch` com `confirm` vazio = apply; preenchido = destroy). PR pequeno por repo, a partir de `homolog`.
@@ -95,7 +94,8 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 - ⬜ imagem enviada ao ECR com tag = SHA · ⬜ `kubectl apply -k` no k3s pelo túnel SSM · ⬜ rollout, **rollback** automático · ⬜ health pelo Ingress de dentro do node
 - ⬜ Flyway (V1–V6) num **RDS real** com `sslmode=require` e `rds.force_ssl=1` (fecha o ⬜ de E1 e de E3) · ⬜ `X-Correlation-Id` e `mdc` no log JSON do **pod**
 
-**E6 — API Gateway e authorizer (oficina-auth-lambda#3 e #4)**
+**E6 — API Gateway e authorizer (oficina-auth-lambda#3 e #4, mergeados)**
+- ✅ `terraform-check` completo no **runner** (fmt, validate, tflint, trivy, shellcheck), `build-test` (178 testes), `workflow-lint` e `plan` (sessão inativa = aviso) · ✅ `stack` pula o `apply` com aviso no merge
 - ✅ authorizer: 78 testes (alg `none`, confusão de algoritmo HS256 com a chave pública, RS384/PS256, `jwk` no header, payload adulterado, expirado, `nbf`, emissor, sem `sub`/`exp`) e gate JaCoCo
 - ✅ contrato entre as funções (token da `auth-function` aceito pelo authorizer; adulterado → `BAD_SIGNATURE`) · ✅ `terraform validate`/`tflint`/`trivy` · ✅ `actionlint`/`shellcheck`
 - ✅ CPFs gerados pelo `smoke-gateway.sh` (40/40 válidos na validação real) · ✅ build reprodutível em Docker gera os dois JARs
@@ -106,7 +106,8 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 ## Pendências
 
 **Do usuário**
-- [ ] Mergear **oficina-auth-lambda#3** e, depois que o Claude religar a base com rebase, **#4** (não fazer `git pull` na branch do #4)
+- [x] Mergear oficina-auth-lambda#3 e #4 (feito na sessão 7)
+- [ ] Mergear o PR de docs deste PROGRESSO (oficina-app#16), se ainda aberto
 - [ ] Definir os secrets de `homologacao` de `oficina-app` e `oficina-auth-lambda` (lista em "Próximo passo") e gerar **um** par JWT para os dois
 - [ ] Renovar as credenciais do Academy e rodar `set-aws-session-secrets.sh` no início da sessão AWS (as anteriores expiraram)
 - [ ] (Opcional) remover dois volumes Docker deixados pelo teste local do deploy: `docker volume rm oficina_postgres_data oficina_jwt_keys` — contêm só dados de teste (comandos de remoção de volume são barrados para o Claude)
@@ -115,7 +116,7 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
 
 **Do Claude (sem AWS)**
-- [ ] Religar a base do #4 para `homolog` com rebase assim que o #3 for mergeado
+- [x] Religar a base do #4 para `homolog` com rebase (feito)
 - [ ] Disparo manual de `apply` em `oficina-infra-k8s` e `oficina-infra-database` (hoje só destroy), a partir de `homolog`, antes da sessão AWS
 - [ ] (Decisão do usuário) filtro do gateway no Vert.x, para o 403 valer também para anônimos — hoje anônimo recebe 401 (ver "Decisões")
 
@@ -130,7 +131,7 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 | `oficina-app` | `homolog`/`main` | app Quarkus com E1+E4 (CLIENT, `/me`, correlação, métricas), `k8s/` em kustomize (base + overlays hml/prod; Secret fora), Postman, `scripts/smoke-test.sh`, `specs/` | `ci.yml` + **`deploy.yml`** (imagem ECR, kustomize via SSM, rollback, smoke test) | `build-test`, `docker-build` (Trivy CRITICAL/fixed) |
 | `oficina-infra-k8s` | `main` | E2 completa: VPC, EC2/k3s, ECR, SG (faixas do API Gateway), contrato SSM, workspaces `hml`/`prod`, pipeline com apply/destroy | `terraform.yml` | `validate`, `plan` |
 | `oficina-infra-database` | `main` | E3 completa: RDS PG16, parameter group (force_ssl), SG, contrato SSM, workspaces, pipeline com apply/destroy | `terraform.yml` | `validate`, `plan` |
-| `oficina-auth-lambda` | `homolog` | E5: `auth-function` (Java 21 + SnapStart) + `terraform/` da função; **E6 (PRs #3 e #4 abertos):** `authorizer-function` e Terraform do API Gateway; `scripts/smoke-test.sh` e `smoke-gateway.sh` | `ci.yml` (`build-test`, `terraform-check`) + `deploy.yml` (package/plan/apply/destroy) | `build-test`, `terraform-check` |
+| `oficina-auth-lambda` | `homolog` | E5: `auth-function` (Java 21 + SnapStart) + `terraform/` da função; **E6 (mergeada):** `authorizer-function` e Terraform do API Gateway; `scripts/smoke-test.sh` e `smoke-gateway.sh` | `ci.yml` (`build-test`, `terraform-check`) + `deploy.yml` (package/plan/apply/destroy) | `build-test`, `terraform-check` |
 
 Histórico das Fases 1-2 preservado nos 3 repos derivados; `kubeconfig-raw` e `patch.json` removidos
 do histórico. `test-keys/*.pem` em `oficina-app` são fixtures documentadas (não são segredo).
@@ -270,3 +271,6 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
   `/auth/token`, CORS, access log sem `Authorization`, X-Gateway-Key sobrescrito, URL no SSM); `deploy.yml` com `stack`/`plan`/`apply` + `scripts/smoke-gateway.sh` (400/401, negado no gateway pelo access
   log, 429, fluxo completo do cliente). **Restaurados** `ci.yml` (`terraform-check` completo) e README, perdidos na reconciliação do #2 da E5. **Gap registrado:** infra-k8s e infra-database só aplicam
   em push (sem apply manual).
+- **2026-10-28 (sessão 7, fechamento)** — #3 e #4 mergeados; #4 religado com `rebase --onto` (árvore idêntica, `--force-with-lease` só na branch do PR). O `terraform-check` completo rodou pela primeira vez no
+  runner e pegou um estilo de `shellcheck` (SC2015: `A && B || C`) que o shellcheck local não pegou: corrigido com `if` explícito. Lição: o shellcheck do runner é mais estrito que o do Docker local — evitar `A && B || C`.
+  Estado final: 4 repositórios em `homolog`, nenhum PR de código aberto, nada na AWS. **Próxima sessão começa pelo apply manual de infra-k8s e infra-database** (ver "Próximo passo").
