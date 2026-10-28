@@ -24,6 +24,9 @@ data:
   APP_SEED_ENABLED: "false"
   # Nome do ambiente (sobrescrito pelo overlay); sai como campo "env" nos logs JSON.
   APP_ENV: "prod"
+  # Traces (E7): fração amostrada pelo OTLP. O SDK só liga se o Secret trouxer NEW_RELIC_LICENSE_KEY
+  # (a pipeline define OTEL_SDK_DISABLED). hml sobrescreve para 1.0.
+  OTEL_TRACES_SAMPLER_ARG: "0.2"
   # Pool de conexões por réplica: 4 réplicas x 8 = 32, bem abaixo do teto de ~112 do db.t4g.micro.
   QUARKUS_DATASOURCE_JDBC_MAX_SIZE: "8"
   APP_SEED_ADMIN_USERNAME: "admin"

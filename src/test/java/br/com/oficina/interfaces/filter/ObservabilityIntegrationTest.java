@@ -107,6 +107,36 @@ class ObservabilityIntegrationTest {
             .anySatisfy(record -> assertThat(record.getMdc("correlationId")).isEqualTo("mdc-check-001"));
     }
 
+    /** Spec 05 §5: nenhuma senha (nem em mensagem, nem em MDC) pode chegar ao log, de nenhuma categoria. */
+    @Test
+    @Order(7)
+    void failedLogin_shouldNeverLeakThePasswordToAnyLog() {
+        List<ExtLogRecord> captured = new CopyOnWriteArrayList<>();
+        ExtHandler handler = new ExtHandler() {
+            @Override
+            protected void doPublish(ExtLogRecord record) {
+                captured.add(record);
+            }
+        };
+        Logger root = Logger.getLogger("");
+        root.addHandler(handler);
+        try {
+            given().contentType(ContentType.JSON).header("X-Correlation-Id", "leak-check-001")
+                .body("{\"username\": \"nao-existe\", \"password\": \"senha-vazada-987\"}")
+                .when().post("/auth/login")
+                .then().statusCode(401);
+        } finally {
+            root.removeHandler(handler);
+        }
+
+        assertThat(captured).isNotEmpty();
+        assertThat(captured).noneSatisfy(record -> {
+            assertThat(String.valueOf(record.getFormattedMessage())).contains("senha-vazada-987");
+            assertThat(String.valueOf(record.getMdcCopy())).contains("senha-vazada-987");
+            assertThat(String.valueOf(record.getThrown())).contains("senha-vazada-987");
+        });
+    }
+
     // ===== Métricas de negócio =====
 
     @Test
