@@ -38,6 +38,9 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: /q/metrics
         prometheus.io/port: "8080"
+        # Coleta pelo newrelic-prometheus-agent (E7): o job "default" do agente só pega alvos de integrações
+        # conhecidas; o job "newrelic" pega qualquer alvo com esta anotação.
+        newrelic.io/scrape: "true"
     spec:
       serviceAccountName: oficina-app
       securityContext:
