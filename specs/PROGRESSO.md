@@ -114,6 +114,7 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 - [ ] Definir `DB_PASSWORD` no environment `producao` de `oficina-infra-database` — **feito** em 2026-10-19; os demais secrets de `producao` só quando for subir `prod`
 - [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
+- [ ] **Depois da gravação do vídeo: reverter o seed de `prod`** (`k8s/overlays/prod/kustomization.yaml` → `APP_SEED_ENABLED: "false"`), via PR
 
 **Do Claude (sem AWS)**
 - [x] Religar a base do #4 para `homolog` com rebase (feito)
