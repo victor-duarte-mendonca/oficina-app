@@ -605,3 +605,12 @@ terraform output application_url
 ### Vídeo demonstrativo
 
 [Link do vídeo](https://www.youtube.com/watch?v=ZaVSqljr3ek)
+
+## Documentação
+
+- [Arquitetura e diagramas](docs/arquitetura.md): componentes (com a fronteira da VPC), sequência de autenticação por CPF e de abertura/aprovação de OS
+- [ADRs](docs/adr/README.md): 17 decisões de arquitetura · [RFCs](docs/rfc/): nuvem, banco de dados e estratégia de autenticação
+- [Modelo de dados (ER)](docs/erd.md) e justificativa do banco ([RFC 0002](docs/rfc/0002-escolha-do-banco-de-dados.md))
+- [Runbook de sessão e custos](docs/RUNBOOK.md) · [Orçamento](docs/orcamento.md) · [Roteiro de validação em produção](docs/VALIDACAO-PROD.md)
+- Specs da Fase 3: [`specs/`](specs/00-visao-geral.md) · estado e checklist: [`specs/PROGRESSO.md`](specs/PROGRESSO.md)
+- Repositórios irmãos: [oficina-auth-lambda](https://github.com/victor-duarte-mendonca/oficina-auth-lambda), [oficina-infra-k8s](https://github.com/victor-duarte-mendonca/oficina-infra-k8s), [oficina-infra-database](https://github.com/victor-duarte-mendonca/oficina-infra-database)

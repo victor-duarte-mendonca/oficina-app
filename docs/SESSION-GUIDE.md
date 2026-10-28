@@ -1,5 +1,7 @@
 # Guia de Sessão — AWS Academy (Oficina Mecânica)
 
+> **⚠️ Histórico (Fase 2, monorepo e pipeline única).** Para a Fase 3 (quatro repositórios) use [`RUNBOOK.md`](RUNBOOK.md) e [`VALIDACAO-PROD.md`](VALIDACAO-PROD.md).
+
 > Runbook executável de uma sessão completa: subir a infraestrutura, publicar a aplicação, validar,
 > demonstrar e destruir. Os comandos são **PowerShell** (o shell padrão no Windows) — as armadilhas
 > documentadas na seção de problemas conhecidos são específicas dele.
