@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-28** (sessão 7 — deploy da app mergeado; E6 escrita com 2 PRs abertos; sessão AWS consolidada pendente).
+> Última atualização: **2026-10-28** (sessão 8 — apply manual nos 2 repos de infra mergeado; tudo que não depende de AWS para a sessão AWS está pronto).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -31,9 +31,9 @@ inclusive o `terraform-check` completo no runner. O deploy do auth-lambda no mer
 
 **Ao retomar (ordem):**
 1. ~~Mergear #3 e #4~~ — **feito** (sessão 7). Regra que fica: PR empilhado = o Claude religa a base com `rebase`; o usuário não faz `git pull` na branch empilhada (ver "Lições").
-2. **Sem AWS — tarefa a fazer antes da sessão AWS:** `oficina-infra-k8s` e `oficina-infra-database` só fazem `apply` em **push**; o `workflow_dispatch`
-   deles é só de destroy. Hoje, para subir `hml` de novo, é preciso *Re-run all jobs* do último run de push em `homolog`. Recomendado: dar a eles o mesmo
-   disparo manual de apply do `oficina-auth-lambda` (`workflow_dispatch` com `confirm` vazio = apply; preenchido = destroy). PR pequeno por repo, a partir de `homolog`.
+2. ~~Apply manual em infra-k8s e infra-database~~ — **feito** (sessão 8; infra-k8s#7 e infra-database#2 mergeados). *Actions → Terraform → Run workflow*,
+   **Use workflow from: `homolog`** (hml) ou `main` (prod), `workspace` e `confirm` **vazio = apply**; `destroy-<workspace>` = destroy. Guard: `hml` só com a
+   branch `homolog`, `prod` só com `main`; `prod` pede aprovação do ambiente `producao`.
 3. **Usuário — secrets de `homologacao`** (valores são seus; gerar **um** par JWT com `oficina-app/generate-keys.sh` e usar a **mesma** chave nos dois repos):
    - `oficina-app`: `DB_USERNAME` (use `oficina_admin`), `DB_PASSWORD` (**igual** ao do `oficina-infra-database`), `LAMBDA_RO_PASSWORD`, `JWT_PRIVATE_KEY_PEM`,
      `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_MECHANIC_PASSWORD`, `APP_GATEWAY_KEY` (necessária para o gateway); opcionais `MAILER_*`.
@@ -107,7 +107,7 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 
 **Do usuário**
 - [x] Mergear oficina-auth-lambda#3 e #4 (feito na sessão 7)
-- [ ] Mergear o PR de docs deste PROGRESSO (oficina-app#16), se ainda aberto
+- [x] Mergear os PRs de docs do PROGRESSO (#16 e #17) e os de apply manual (infra-k8s#7, infra-database#2)
 - [ ] Definir os secrets de `homologacao` de `oficina-app` e `oficina-auth-lambda` (lista em "Próximo passo") e gerar **um** par JWT para os dois
 - [ ] Renovar as credenciais do Academy e rodar `set-aws-session-secrets.sh` no início da sessão AWS (as anteriores expiraram)
 - [ ] (Opcional) remover dois volumes Docker deixados pelo teste local do deploy: `docker volume rm oficina_postgres_data oficina_jwt_keys` — contêm só dados de teste (comandos de remoção de volume são barrados para o Claude)
@@ -117,7 +117,8 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 
 **Do Claude (sem AWS)**
 - [x] Religar a base do #4 para `homolog` com rebase (feito)
-- [ ] Disparo manual de `apply` em `oficina-infra-k8s` e `oficina-infra-database` (hoje só destroy), a partir de `homolog`, antes da sessão AWS
+- [x] Disparo manual de `apply` em `oficina-infra-k8s` e `oficina-infra-database` (feito na sessão 8: infra-k8s#7, infra-database#2); `plan` em PR agora ignora sessão expirada
+- [ ] Escrever, sem AWS: código da E7 (observabilidade), E8 (documentação) e E9 (runbook); validar só na sessão AWS
 - [ ] (Decisão do usuário) filtro do gateway no Vert.x, para o 403 valer também para anônimos — hoje anônimo recebe 401 (ver "Decisões")
 
 **Validações de primeira sessão AWS** (spec 00 §6, spec 03 §8) — fazer na sessão consolidada:
@@ -195,6 +196,16 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 - `jq` não existe no Git Bash local (existe nos runners): validar scripts com um shim em Node fora do repositório. `java -cp` no Windows separa com `;`. Snippets Java curtos: `printf` + arquivo.
 - Num HTTP API, ausência de `Authorization` = 401 e `isAuthorized=false` = 403; filtros JAX-RS rodam depois da checagem de `@RolesAllowed` no RESTEasy Reactive: **testar com requisição sem token**, não só com token.
 - Workflows de infra que só aplicam em `push` não têm como subir um ambiente destruído sem re-executar um run antigo: dar a todo pipeline de infra um `workflow_dispatch` de apply.
+
+## Como saber se a AWS "deu certo" (sessão consolidada)
+
+- **`plan` em PR** (infra-k8s, infra-database): testa a sessão com `sts get-caller-identity`. Sessão ativa = roda de verdade e **comenta o plano no PR**; erro de Terraform = job
+  vermelho. Sessão expirada = job **verde mas pulado** (só um `notice` "Sem sessão AWS ativa..." nas anotações e **nenhum comentário de plano**). Verde sem comentário **não** valida nada:
+  renovar credenciais (`set-aws-session-secrets.sh`) **antes** de abrir PR na sessão AWS e conferir que o comentário apareceu.
+- **`apply`** (push em `homolog`/`main` ou *Run workflow*): **não** ignora sessão expirada; `configure-aws-credentials` falha com token inválido (vermelho). Sucesso = resumo do run com
+  URL/ECR (k8s) ou endpoint e data (database, após `db-instance-available`). Falha = `gh run view <id> --log-failed`.
+- **Confirmação real:** itens ⬜ do checklist (curl com/sem `X-Gateway-Key`, smoke tests, Postman) e, no fim, `describe-instances`/`describe-volumes`/`describe-addresses` pós-destroy.
+- O `deploy.yml` do auth-lambda tem o job `stack` (SSM `/oficina/<env>/*`): sem infra de pé, o push ignora o apply com aviso; o disparo manual falha de propósito.
 
 ## Histórico de sessões
 
@@ -274,3 +285,7 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 - **2026-10-28 (sessão 7, fechamento)** — #3 e #4 mergeados; #4 religado com `rebase --onto` (árvore idêntica, `--force-with-lease` só na branch do PR). O `terraform-check` completo rodou pela primeira vez no
   runner e pegou um estilo de `shellcheck` (SC2015: `A && B || C`) que o shellcheck local não pegou: corrigido com `if` explícito. Lição: o shellcheck do runner é mais estrito que o do Docker local — evitar `A && B || C`.
   Estado final: 4 repositórios em `homolog`, nenhum PR de código aberto, nada na AWS. **Próxima sessão começa pelo apply manual de infra-k8s e infra-database** (ver "Próximo passo").
+- **2026-10-28 (sessão 8)** — `workflow_dispatch` de **apply** em `oficina-infra-k8s#7` e `oficina-infra-database#2` (mergeados): `confirm` vazio = apply, `destroy-<workspace>` = destroy; guard
+  workspace × branch; `apply` com `!cancelled()` para o skip do `validate` não se propagar; actionlint limpo; READMEs atualizados. O CI dos PRs falhou no `plan` por secrets `AWS_*` expirados
+  (a checagem só via "não vazio" e o `configure-aws-credentials` rejeitava o token): `plan` passou a testar `sts get-caller-identity` e a pular com aviso, como o auth-lambda. Ver "Como saber se a AWS deu certo".
+  **Pronto para a sessão AWS** do lado do código; sem AWS resta escrever E7/E8/E9.
