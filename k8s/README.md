@@ -1,5 +1,43 @@
 # Deploy no k3s — Oficina Mecânica
 
+## Deploy automatizado (o caminho normal)
+
+O deploy é feito pelo workflow [`Deploy`](../.github/workflows/deploy.yml): **imagem no ECR** (tag = SHA do
+commit, nunca `:latest`, com scan Trivy antes do push) → **túnel SSM** até o k3s → secrets criados a partir dos
+secrets do GitHub Environment → `kubectl apply -k k8s/overlays/<env>` → `rollout status` com **rollback
+automático** → **smoke test** ([`scripts/smoke-test.sh`](../scripts/smoke-test.sh)) e health check pelo Ingress
+de dentro do node.
+
+| Branch | Environment | Workspace |
+|---|---|---|
+| `homolog` | `homologacao` | `hml` |
+| `main` | `producao` (aprovação do usuário) | `prod` |
+
+**A stack sobe sob demanda.** Um push que mude a aplicação só dispara o deploy se a stack existir; sem ela (ou
+com a sessão AWS expirada), o deploy é **ignorado com um aviso**, sem deixar o merge vermelho. Depois de subir a
+infraestrutura (`oficina-infra-k8s` e `oficina-infra-database` no mesmo workspace), dispare à mão:
+*Actions → Deploy → Run workflow → Use workflow from: `homolog`*. O ECR é recriado a cada sessão, então a imagem
+é reconstruída e enviada em cada disparo.
+
+**Secrets de environment** (`homologacao` / `producao`; valores são do usuário):
+
+| Secret | Obrigatório | Observação |
+|---|---|---|
+| `DB_USERNAME`, `DB_PASSWORD` | sim | os mesmos do `oficina-infra-database` |
+| `LAMBDA_RO_PASSWORD` | sim | senha do papel `oficina_auth_ro` (migration V6); a **mesma** do `oficina-auth-lambda` |
+| `JWT_PRIVATE_KEY_PEM` | sim | chave RSA PKCS#8; a **mesma** do Lambda. A pública é derivada no deploy |
+| `APP_GATEWAY_KEY` | `prod` | `X-Gateway-Key` que o API Gateway injeta; em `hml` vazio = filtro desligado |
+| `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_MECHANIC_PASSWORD` | `hml` | o seed só está ligado em homologação |
+| `MAILER_HOST`, `MAILER_USERNAME`, `MAILER_PASSWORD` | não | sem SMTP a aprovação remota por e-mail não funciona |
+
+O `endpoint` do RDS e a URL do ECR vêm do **SSM** publicado pelos repositórios de infraestrutura; nada é copiado
+à mão. O `secret.example.yaml` da base fica **fora** do kustomization de propósito: se estivesse nos
+`resources`, cada `kubectl apply -k` sobrescreveria o Secret real com os placeholders.
+
+---
+
+## Deploy manual (referência)
+
 Pré-requisito: `KUBECONFIG` apontando para o cluster k3s (ver [`../infra/README.md`](../infra/README.md),
 seção "Buscar o kubeconfig").
 
@@ -10,7 +48,7 @@ seção "Buscar o kubeconfig").
 | `base/` + `overlays/{hml,prod}` | Kustomize: a base tem os valores de produção; cada overlay sobrescreve réplicas/HPA, seed e nome do ambiente |
 | `namespace.yaml`      | Namespace `oficina`                                           |
 | `configmap.yaml`      | Configuração não sensível (perfil, CORS, SMTP, seed)          |
-| `secret.yaml`         | **Placeholders** — os valores reais vêm dos comandos abaixo   |
+| `secret.example.yaml` | **Exemplo** (fora do kustomization) — os valores reais vêm da pipeline ou dos comandos abaixo |
 | `deployment.yaml`     | ServiceAccount + Deployment + PodDisruptionBudget             |
 | `service.yaml`        | Service ClusterIP                                             |
 | `ingress.yaml`        | Ingress Traefik — é o que expõe a API para fora do cluster    |
@@ -101,9 +139,8 @@ ECR=$(aws ssm get-parameter --name /oficina/$ENV/ecr_repository_url --query Para
 kubectl apply -k k8s/overlays/$ENV
 ```
 
-Pré-visualizar sem aplicar: `kubectl kustomize k8s/overlays/hml`. O `secret.yaml` da base só tem
-placeholders; os valores reais vêm do passo 4 (aplique o Secret real depois do `apply -k`, ou remova o
-`secret.yaml` dos `resources` no ambiente que o gerencia por fora).
+Pré-visualizar sem aplicar: `kubectl kustomize k8s/overlays/hml`. O kustomize **não** gera o Secret (só há o
+`secret.example.yaml`, fora dos `resources`): crie os Secrets dos passos 2 a 4 **antes** do `apply -k`.
 
 O egresso da `NetworkPolicy` inclui TCP 443 (exportador OTLP para o New Relic), além de DNS, PostgreSQL e SMTP.
 

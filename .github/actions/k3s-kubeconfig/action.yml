@@ -6,6 +6,14 @@ description: >
   test — duplicação em que uma correção aplicada num lado e esquecida no outro passa
   despercebida até o deploy quebrar.
 
+inputs:
+  environment:
+    description: >
+      Workspace da stack (hml ou prod). hml e prod coexistem na mesma conta, ambos com
+      Project=oficina; sem filtrar por Environment o node escolhido seria ambíguo e um deploy
+      de homologação poderia cair no cluster de produção.
+    required: true
+
 runs:
   using: composite
   steps:
@@ -18,14 +26,17 @@ runs:
 
     - name: Buscar kubeconfig via SSM Run Command
       shell: bash
+      env:
+        STACK_ENV: ${{ inputs.environment }}
       run: |
         # Run Command em vez de SSH: dispensa distribuir a chave privada da EC2 como
         # secret e não depende do IP de saída do runner, que é dinâmico.
         INSTANCE_ID="$(aws ec2 describe-instances \
-          --filters "Name=tag:Project,Values=oficina" "Name=instance-state-name,Values=running" \
+          --filters "Name=tag:Project,Values=oficina" "Name=tag:Environment,Values=${STACK_ENV}" \
+                    "Name=instance-state-name,Values=running" \
           --query 'Reservations[0].Instances[0].InstanceId' --output text)"
         if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
-          echo "::error::Nenhuma EC2 em execução com tag Project=oficina. Rode o terraform-apply antes."
+          echo "::error::Nenhuma EC2 em execução com Project=oficina e Environment=${STACK_ENV}. Aplique o oficina-infra-k8s neste workspace antes."
           exit 1
         fi
         echo "INSTANCE_ID=$INSTANCE_ID" >> "$GITHUB_ENV"
@@ -36,11 +47,13 @@ runs:
           --parameters 'commands=["cat /home/ec2-user/.kube/config"]' \
           --query 'Command.CommandId' --output text)"
 
-        for _ in $(seq 1 20); do
+        # O k3s leva alguns minutos para instalar depois de a EC2 subir (user_data): espera mais que
+        # a Fase 2, que assumia o node já pronto.
+        for _ in $(seq 1 60); do
           STATUS="$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
             --query 'Status' --output text 2>/dev/null || echo Pending)"
           [ "$STATUS" = "Success" ] && break
-          [ "$STATUS" = "Failed" ] && { echo "::error::Comando SSM falhou"; exit 1; }
+          [ "$STATUS" = "Failed" ] && { echo "::error::Comando SSM falhou (o k3s ainda está instalando ou o agente do SSM não registrou o node)"; exit 1; }
           sleep 3
         done
         [ "$STATUS" = "Success" ] || { echo "::error::Timeout aguardando o SSM"; exit 1; }
