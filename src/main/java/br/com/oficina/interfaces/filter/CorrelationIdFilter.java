@@ -32,7 +32,9 @@ public class CorrelationIdFilter {
     /** Executa antes de CORS e autenticação (prioridade maior = mais cedo). */
     static final int PRIORITY = 10_000;
 
-    private static final Pattern SAFE_ID = Pattern.compile("[A-Za-z0-9._:-]{1,128}");
+    // "=" é aceito porque o $context.requestId do API Gateway HTTP termina em "=" (ex.: JIK9Ngt5IAMEJHg=);
+    // não permite forjar linha de log.
+    private static final Pattern SAFE_ID = Pattern.compile("[A-Za-z0-9._:=-]{1,128}");
 
     /** Chaves de MDC desta requisição; todas saem do contexto quando a resposta termina. */
     static final List<String> MDC_KEYS = List.of(MDC_KEY, CallerMdcFilter.USERNAME_KEY, CallerMdcFilter.CLIENT_ID_KEY);

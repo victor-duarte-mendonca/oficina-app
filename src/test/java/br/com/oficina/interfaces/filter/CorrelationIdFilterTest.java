@@ -38,6 +38,12 @@ class CorrelationIdFilterTest {
             .isEqualTo("1-67891233-abcdef012345678912345678");
     }
 
+    /** O requestId do API Gateway HTTP ($context.requestId) termina em "=": não pode ser descartado. */
+    @Test
+    void resolve_shouldAcceptTheGatewayRequestIdFormat() {
+        assertThat(CorrelationIdFilter.resolve(request("JIK9Ngt5IAMEJHg=", null))).isEqualTo("JIK9Ngt5IAMEJHg=");
+    }
+
     @Test
     void resolve_shouldPreferCorrelationIdOverGatewayRequestId() {
         assertThat(CorrelationIdFilter.resolve(request("mine", "gateway"))).isEqualTo("mine");
