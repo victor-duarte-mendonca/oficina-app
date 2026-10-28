@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-19** (sessão 6 — E4 e E5 concluídas no código; deploy da app e validação em AWS pendentes).
+> Última atualização: **2026-10-28** (sessão 7 — deploy da app mergeado; E6 escrita com 2 PRs abertos; sessão AWS consolidada pendente).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -15,38 +15,43 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 | E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | ✅ concluída (hml aplicada; prod ainda não) |
 | E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ✅ concluída (código e CI; deploy em cluster pendente) |
 | E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ✅ concluída (código + Terraform; validação em AWS pendente) |
-| — Deploy da aplicação (pipeline; spec 08 §6) | 08 | oficina-app | ⬜ lacuna: bloqueia validar E4/E5 |
-| E6 API Gateway + authorizer | 03 | oficina-auth-lambda | ⬜ |
+| — Deploy da aplicação (pipeline; spec 08 §6) | 08 | oficina-app | ✅ mergeado (app#15); validação em AWS pendente |
+| E6 API Gateway + authorizer | 03 | oficina-auth-lambda | 🟨 código escrito; PRs #3 e #4 abertos |
 | E7 Observabilidade fim-a-fim (New Relic) | 05 | app + infra + lambda | ⬜ |
 | E8 Documentação arquitetural (ADRs, diagramas, READMEs) | 09 | todos | ⬜ |
 | E9 Runbook de sessão e custos | 10 | oficina-infra-k8s | ⬜ |
 
 ## Próximo passo
 
-**E0–E5 concluídas no código** (E2/E3 também aplicadas e validadas em `hml`). Nada de pé na AWS. O que falta validar em AWS está
-no checklist abaixo — e quase tudo depende de a **aplicação estar implantada em `hml`**, o que ainda não existe.
+**O código de E0–E6 e do deploy da aplicação está escrito.** Falta mergear os 2 PRs da E6 e fazer a **sessão AWS
+consolidada**, que valida tudo de uma vez. **Nada está de pé na AWS** (conferido na sessão 6).
 
-**Lacuna encontrada na sessão 6:** o `ci.yml` da `oficina-app` só tem `build-test` e `docker-build`. Não existe o job de **deploy** da
-aplicação (spec 08 §6: ECR push → `kustomize` + `kubectl` via túnel SSM → rollout com rollback → smoke test). Ele não pertence a nenhuma
-das etapas E0–E9 por nome, mas bloqueia validar E4 e E5 de ponta a ponta:
-- o papel `oficina_auth_ro` **só nasce quando a aplicação migra o banco (V6)**; sem a app em `hml`, o smoke test da função E5 falha com 500;
-- o smoke test do E6 e o critério "token do Lambda aceito pela app em execução" precisam da app respondendo.
+**Estado dos PRs:** `oficina-auth-lambda#3` (authorizer, base `homolog`) e `#4` (gateway, **empilhado** sobre o #3) estão **abertos**.
+O deploy da aplicação (`oficina-app#15`) já foi mergeado e, num push sem infra, passou verde com um aviso (deploy ignorado).
 
-**Ordem (as duas primeiras frentes não precisam de AWS):**
-1. **Deploy da aplicação** em `oficina-app` (spec 08 §6): job `deploy` no `ci.yml` usando a composite action `.github/actions/k3s-kubeconfig`
-   (já copiada na E0) + `kubectl apply -k k8s/overlays/<env>`, `rollout status` com rollback, e `smoke-test` (`/q/health`, `/q/metrics`).
-   Branch `feature/deploy-app` a partir de `homolog`, PR para `homolog`.
-2. **E6 — spec 03** em `oficina-auth-lambda`: API Gateway HTTP API, rotas, **authorizer** (módulo `authorizer-function`, fora da VPC),
-   integração `HTTP_PROXY` → EIP do k3s, injeção de `X-Gateway-Key`, throttling por rota, logs. Branch `feature/e6-api-gateway`.
-3. **Uma sessão AWS consolidada** (~4 h, ≈ US$ 0,3): subir `infra-k8s` → `infra-database` → deploy da app → `auth-lambda` → gateway, validar **todos** os
-   itens ⬜ do checklist de uma vez e destruir na ordem inversa. Mais barato e mais confiável que uma sessão por etapa.
-4. Depois: E7 (observabilidade, `OTEL_*`/`NEW_RELIC_*`), E8 (documentação), E9 (runbook). PRs `homolog` → `main` só quando quiser subir `prod`.
+**Ao retomar (ordem):**
+1. **Usuário:** mergear o **#3**. **Não fazer `git pull` na branch do #4**: avisar o Claude, que religa a base para `homolog` com **rebase**.
+   (Na E5, a reconciliação manual de um PR empilhado depois do squash **perdeu o `ci.yml` e o README** — ver "Lições".) Depois mergear o **#4**.
+2. **Sem AWS — tarefa a fazer antes da sessão AWS:** `oficina-infra-k8s` e `oficina-infra-database` só fazem `apply` em **push**; o `workflow_dispatch`
+   deles é só de destroy. Hoje, para subir `hml` de novo, é preciso *Re-run all jobs* do último run de push em `homolog`. Recomendado: dar a eles o mesmo
+   disparo manual de apply do `oficina-auth-lambda` (`workflow_dispatch` com `confirm` vazio = apply; preenchido = destroy). PR pequeno por repo, a partir de `homolog`.
+3. **Usuário — secrets de `homologacao`** (valores são seus; gerar **um** par JWT com `oficina-app/generate-keys.sh` e usar a **mesma** chave nos dois repos):
+   - `oficina-app`: `DB_USERNAME` (use `oficina_admin`), `DB_PASSWORD` (**igual** ao do `oficina-infra-database`), `LAMBDA_RO_PASSWORD`, `JWT_PRIVATE_KEY_PEM`,
+     `APP_SEED_ADMIN_PASSWORD`, `APP_SEED_MECHANIC_PASSWORD`, `APP_GATEWAY_KEY` (necessária para o gateway); opcionais `MAILER_*`.
+   - `oficina-auth-lambda`: `LAMBDA_RO_PASSWORD` (**igual** ao da app), `JWT_PRIVATE_KEY_PEM` (**a mesma** da app), `APP_GATEWAY_KEY` (**o mesmo** da app),
+     opcional `APP_SEED_ADMIN_PASSWORD` (habilita o fluxo completo do cliente no smoke test).
+   - `oficina-infra-database`: `DB_PASSWORD` já existe em `homologacao` e `producao`.
+4. **Sessão AWS consolidada** (~4 h, ≈ US$ 0,3). Renovar as credenciais do Academy e rodar `set-aws-session-secrets.sh`; depois, **nesta ordem**:
+   1. `oficina-infra-k8s` → `apply` em `hml` (k3s leva alguns minutos para instalar) · valida E2
+   2. `oficina-infra-database` → `apply` em `hml` (RDS ≈ 8 min) · valida E3
+   3. `oficina-app` → *Actions → Deploy → Run workflow* em `homolog` · valida o deploy, V5/V6 no RDS real, TLS (`sslmode=require`) e E4
+   4. `oficina-auth-lambda` → *Actions → Deploy → Run workflow* (deixe `confirm` vazio) · valida E5 e E6 (SnapStart, gateway, authorizer, 429, fluxo do cliente)
+   5. Conferências manuais: de **sua máquina**, `curl http://<eip>/me/work-orders` com token válido e **sem** `X-Gateway-Key` → **403**; Postman com `gatewayUrl`
+   6. **Destroy** nesta ordem: `oficina-auth-lambda` → `oficina-infra-database` → `oficina-infra-k8s`; conferir restos (`describe-instances`, `describe-volumes`, `describe-addresses`)
+5. Depois: **E7** (observabilidade: `OTEL_*`/`NEW_RELIC_*`, agentes), **E8** (documentação), **E9** (runbook). PRs `homolog` → `main` só quando quiser subir `prod`.
 
-**Secrets a definir antes da sessão consolidada** (valores são do usuário; ver "Pendências"):
-- Chave JWT: gerar **uma vez** (`oficina-app/generate-keys.sh`) e usar **a mesma** `privateKey.pem` na app e no Lambda.
-- `oficina-auth-lambda` env `homologacao`: `LAMBDA_RO_PASSWORD`, `JWT_PRIVATE_KEY_PEM`.
-- `oficina-app` env `homologacao`: `DB_USERNAME`, `DB_PASSWORD` (a mesma do `oficina-infra-database`), `LAMBDA_RO_PASSWORD` (a mesma do Lambda), `APP_GATEWAY_KEY`,
-  chaves JWT, `MAILER_*`, `APP_SEED_*_PASSWORD`.
+**Se algo falhar na sessão AWS:** cada pipeline lê o erro com `gh run view <id> --log-failed`. Riscos já mapeados: `apigateway:*` e a política do log group na conta Academy
+(plano B na spec 03 §8), `LabRole` para Lambda em VPC, `reserved_concurrent_executions=10` (senão `-1`), SnapStart indisponível (plano B: Node).
 
 **Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
 
@@ -83,31 +88,49 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 - ⬜ `plan`/`apply` reais · ⬜ **SnapStart** na conta Academy e cold start < 1 s (`Restore Duration`) · ⬜ `reserved_concurrent_executions = 10` aceito (senão `-1`)
 - ⬜ smoke test do alias (400 / 401 com banco alcançado) · ⬜ nenhum CPF completo no CloudWatch · ⬜ token do Lambda aceito pela app **em execução**
 
+**Deploy da aplicação (oficina-app#15)**
+- ✅ `actionlint`/`shellcheck` limpos · ✅ `kubectl kustomize` dos overlays (sem Secret, imagem injetada) · ✅ no push sem infra o deploy passa verde com aviso (verificado em `homolog`)
+- ✅ **smoke test rodado de verdade** contra a app no `docker-compose` (PostgreSQL real, V5/V6 migradas, seed, filtro do gateway): 11 verificações OK; cenários negativos (chave errada, senha errada) reprovam
+- ✅ no mesmo banco, o papel `oficina_auth_ro` existe, lê e é negado em `email` e `INSERT` (premissa da E5 confirmada)
+- ⬜ imagem enviada ao ECR com tag = SHA · ⬜ `kubectl apply -k` no k3s pelo túnel SSM · ⬜ rollout, **rollback** automático · ⬜ health pelo Ingress de dentro do node
+- ⬜ Flyway (V1–V6) num **RDS real** com `sslmode=require` e `rds.force_ssl=1` (fecha o ⬜ de E1 e de E3) · ⬜ `X-Correlation-Id` e `mdc` no log JSON do **pod**
+
+**E6 — API Gateway e authorizer (oficina-auth-lambda#3 e #4)**
+- ✅ authorizer: 78 testes (alg `none`, confusão de algoritmo HS256 com a chave pública, RS384/PS256, `jwk` no header, payload adulterado, expirado, `nbf`, emissor, sem `sub`/`exp`) e gate JaCoCo
+- ✅ contrato entre as funções (token da `auth-function` aceito pelo authorizer; adulterado → `BAD_SIGNATURE`) · ✅ `terraform validate`/`tflint`/`trivy` · ✅ `actionlint`/`shellcheck`
+- ✅ CPFs gerados pelo `smoke-gateway.sh` (40/40 válidos na validação real) · ✅ build reprodutível em Docker gera os dois JARs
+- ⬜ `apigateway:*` e a política do log group na conta Academy · ⬜ SnapStart nas duas funções e cold start < 1 s · ⬜ **401 sem header, 403 com token recusado** (comportamento da AWS; a spec 03 §9 supõe 401)
+- ⬜ access log do gateway com `integrationLatency` vazio nas requisições negadas · ⬜ throttling → 429 em `POST /auth/token` · ⬜ **fluxo completo do cliente pelo gateway** (cria cliente → `/auth/token` → `/me`)
+- ⬜ `curl` direto no EIP sem `X-Gateway-Key` → 403 (manual, do seu IP) · ⬜ coleção Postman contra o gateway
+
 ## Pendências
 
 **Do usuário**
-- [x] Mergear oficina-infra-k8s#1 (script de segredos)
-- [x] Alinhar `homolog` com `main` (oficina-app#3, oficina-infra-k8s#4)
-- [x] Reabrir o AWS Academy, rodar `set-aws-session-secrets.sh` e definir `ALLOWED_CIDR` (sessão 5)
-- [x] Bucket de state: o nome fixo antigo não existia mais na conta; criado `oficina-tfstate-<account-id>` (a pipeline também o cria via `scripts/bootstrap-state-bucket.sh`)
-- [x] `observability.tf` (nri-bundle) fica na E7 (adotado por padrão; reverter se quiser na E2)
-- [ ] Mergear **oficina-app#12** (E4 2/2) e **oficina-app#13** (este registro), depois conferir o CI
-- [ ] Definir `DB_PASSWORD` no environment `producao` de `oficina-infra-database` (só quando for subir `prod`)
+- [ ] Mergear **oficina-auth-lambda#3** e, depois que o Claude religar a base com rebase, **#4** (não fazer `git pull` na branch do #4)
+- [ ] Definir os secrets de `homologacao` de `oficina-app` e `oficina-auth-lambda` (lista em "Próximo passo") e gerar **um** par JWT para os dois
+- [ ] Renovar as credenciais do Academy e rodar `set-aws-session-secrets.sh` no início da sessão AWS (as anteriores expiraram)
+- [ ] (Opcional) remover dois volumes Docker deixados pelo teste local do deploy: `docker volume rm oficina_postgres_data oficina_jwt_keys` — contêm só dados de teste (comandos de remoção de volume são barrados para o Claude)
+- [ ] Definir `DB_PASSWORD` no environment `producao` de `oficina-infra-database` — **feito** em 2026-10-19; os demais secrets de `producao` só quando for subir `prod`
 - [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
 - [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
 
-**Validações de primeira sessão AWS** (spec 00 §6, spec 03 §8) — fazer junto com E2:
-- [ ] `apigateway:*` liberado na conta Academy? (`terraform plan` mínimo)
-- [ ] `LabRole` com trust policy para `lambda.amazonaws.com` e permissão de ENI na VPC?
+**Do Claude (sem AWS)**
+- [ ] Religar a base do #4 para `homolog` com rebase assim que o #3 for mergeado
+- [ ] Disparo manual de `apply` em `oficina-infra-k8s` e `oficina-infra-database` (hoje só destroy), a partir de `homolog`, antes da sessão AWS
+- [ ] (Decisão do usuário) filtro do gateway no Vert.x, para o 403 valer também para anônimos — hoje anônimo recebe 401 (ver "Decisões")
 
-## Estado atual dos repositórios (fim da sessão 6)
+**Validações de primeira sessão AWS** (spec 00 §6, spec 03 §8) — fazer na sessão consolidada:
+- [ ] `apigateway:*` liberado na conta Academy e política de log group para o access log do HTTP API
+- [ ] `LabRole` com trust policy para `lambda.amazonaws.com` e permissão de ENI na VPC
+
+## Estado atual dos repositórios (fim da sessão 7)
 
 | Repo | Branch local | Conteúdo | Pipeline | Checks obrigatórios |
 |---|---|---|---|---|
-| `oficina-app` | `homolog`/`main` | app Quarkus com E1+E4 (CLIENT, `/me`, correlação, métricas), `k8s/` em kustomize (base + overlays hml/prod), Postman, `specs/` | `ci.yml` (**sem job de deploy ainda**) | `build-test`, `docker-build` (Trivy CRITICAL/fixed) |
+| `oficina-app` | `homolog`/`main` | app Quarkus com E1+E4 (CLIENT, `/me`, correlação, métricas), `k8s/` em kustomize (base + overlays hml/prod; Secret fora), Postman, `scripts/smoke-test.sh`, `specs/` | `ci.yml` + **`deploy.yml`** (imagem ECR, kustomize via SSM, rollback, smoke test) | `build-test`, `docker-build` (Trivy CRITICAL/fixed) |
 | `oficina-infra-k8s` | `main` | E2 completa: VPC, EC2/k3s, ECR, SG (faixas do API Gateway), contrato SSM, workspaces `hml`/`prod`, pipeline com apply/destroy | `terraform.yml` | `validate`, `plan` |
 | `oficina-infra-database` | `main` | E3 completa: RDS PG16, parameter group (force_ssl), SG, contrato SSM, workspaces, pipeline com apply/destroy | `terraform.yml` | `validate`, `plan` |
-| `oficina-auth-lambda` | `homolog` | E5: `auth-function` (Java 21 + SnapStart), `terraform/` da função, `scripts/smoke-test.sh`; authorizer e API Gateway entram na E6 | `ci.yml` (`build-test`, `terraform-check`) + `deploy.yml` (package/plan/apply/destroy) | `build-test`, `terraform-check` |
+| `oficina-auth-lambda` | `homolog` | E5: `auth-function` (Java 21 + SnapStart) + `terraform/` da função; **E6 (PRs #3 e #4 abertos):** `authorizer-function` e Terraform do API Gateway; `scripts/smoke-test.sh` e `smoke-gateway.sh` | `ci.yml` (`build-test`, `terraform-check`) + `deploy.yml` (package/plan/apply/destroy) | `build-test`, `terraform-check` |
 
 Histórico das Fases 1-2 preservado nos 3 repos derivados; `kubeconfig-raw` e `patch.json` removidos
 do histórico. `test-keys/*.pem` em `oficina-app` são fixtures documentadas (não são segredo).
@@ -142,6 +165,16 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 | Lambda em Java 21 **sem framework** + SnapStart (ZIP, não container) | Escolha do usuário na sessão 6; reaproveita a stack e os padrões de teste; pool JDBC só sob demanda por causa do snapshot |
 | Regra 5432 do Lambda no SG do RDS vive em `oficina-auth-lambda` | O SG do Lambda só existe depois do RDS; o infra-database publica `rds_security_group_id` no SSM |
 | `plan` das pipelines de infra usa segredos placeholder | Segredos reais são de *environment*; usá-los pediria aprovação de `producao` a cada PR para `main` |
+| Deploy da app sob demanda: sem stack ou com sessão expirada, o push **ignora com aviso**; o disparo manual falha | `hml` sobe sob demanda (spec 06 §4.1); merge não pode ficar vermelho por falta de infraestrutura. Mesmo padrão no `deploy.yml` do auth-lambda |
+| `secret.yaml` virou `secret.example.yaml`, **fora** do kustomize; a pipeline cria os Secrets | `kubectl apply -k` sobrescreveria o Secret real com os placeholders `CHANGE_ME` |
+| Chave pública JWT **derivada** da privada (app: `openssl rsa -pubout`; authorizer: `tls_public_key`) | um único secret compartilhado entre app e Lambda; sem risco de as metades divergirem. Dispensa `JWT_PUBLIC_KEY_PEM` da matriz da spec 08 |
+| Composite action `k3s-kubeconfig` filtra o node por `Environment` | hml e prod coexistem com `Project=oficina`; sem o filtro um deploy de hml poderia cair em prod |
+| Imagem da app com tag = SHA do commit, nunca `:latest`; Trivy antes do push | resolve o motivo do `AWS-0031` no `.trivyignore` do infra-k8s (ECR mutável) quando o deployment passar a usar a tag |
+| **7ª rota `GET /me`** no gateway (além das 6 da spec 03) | `/me/{proxy+}` exige ao menos um segmento e **não casa com `/me`** — o perfil do cliente |
+| Token recusado pelo authorizer = **403** do gateway; header ausente = **401** | comportamento do HTTP API com Lambda authorizer de resposta simples; a spec 03 §9 supunha 401. O smoke test aceita 401/403 e prova que a requisição não chega ao cluster |
+| Authorizer em módulo próprio, **fora da VPC**, sem JDBC, sem rede e sem segredo (só chave pública) | spec 03 §4: se ele cair, todas as rotas protegidas param — mínimo de coisas que podem quebrá-lo |
+| **Correção do E4:** o `GatewayKeyFilter` (JAX-RS) roda **depois** da autorização por papel (RESTEasy Reactive) | anônimo sem token → **401**; token válido sem a chave → **403**. Não vaza nada. Para 403 também a anônimos, o filtro precisa ser do Vert.x (como o de correlação) |
+| `docker-compose` passou a levar `LAMBDA_RO_PASSWORD` e `APP_GATEWAY_KEY` | a app não subia no compose desde a E1 (placeholder do Flyway vazio é tratado como ausente) |
 
 ## Lições operacionais
 
@@ -153,6 +186,14 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 - `aws` CLI sem região no perfil local: usar `--region us-east-1` ou `$env:AWS_DEFAULT_REGION`.
 - Conferir pós-destroy com os serviços (`describe-instances`, `describe-volumes`, `describe-addresses`): a API de tags demora a esquecer recursos.
 - Valores de secrets e credenciais são sempre do usuário; nunca ecoar no chat (credenciais coladas devem ser tratadas como expostas).
+
+- **PR empilhado + squash perde alterações.** Na E5, o #2 era empilhado sobre o #1; depois do squash do #1, a reconciliação manual descartou o `ci.yml` e o README do #2 (o `terraform-check` que passou
+  em `homolog` só rodava `fmt`). Regra: o usuário mergeia o PR da base e **avisa o Claude**, que religa a base para `homolog` com **rebase**; nunca `git pull` na branch do PR empilhado.
+  Depois de qualquer merge empilhado, conferir `git show --stat` do commit mergeado contra o que foi escrito.
+- Comandos destrutivos de Docker (`compose down -v`, `volume rm`) são barrados para o Claude; usar projeto Compose separado (`-p`) e deixar a limpeza de volumes para o usuário.
+- `jq` não existe no Git Bash local (existe nos runners): validar scripts com um shim em Node fora do repositório. `java -cp` no Windows separa com `;`. Snippets Java curtos: `printf` + arquivo.
+- Num HTTP API, ausência de `Authorization` = 401 e `isAuthorized=false` = 403; filtros JAX-RS rodam depois da checagem de `@RolesAllowed` no RESTEasy Reactive: **testar com requisição sem token**, não só com token.
+- Workflows de infra que só aplicam em `push` não têm como subir um ambiente destruído sem re-executar um run antigo: dar a todo pipeline de infra um `workflow_dispatch` de apply.
 
 ## Histórico de sessões
 
@@ -209,7 +250,7 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
   `X-Correlation-Id`; id recebido é validado (anti log injection); `BusinessMetricsPort` + adapter Micrometer (aplicação sem Micrometer); 6 métricas do spec;
   `oficina_auth_denied_total` via eventos de segurança do Quarkus (anônimo = `unauthenticated`, papel errado = `forbidden`); kustomize `base`+`overlays/{hml,prod}`
   (seed só em hml; HPA hml 1→2, prod 2→4); NetworkPolicy 443; Postman com pasta do cliente (precisa de gateway + Lambda). Com o gateway ligado, requisição sem a chave
-  recebe 403 antes da autenticação (inclusive sem token). **Não validado**: `kubectl apply` em cluster e o Postman contra gateway real. **Ficou para a E7**:
+  recebe 403 só depois de autenticar (sem token → 401: ver "Decisões", correção da sessão 7). **Não validado**: `kubectl apply` em cluster e o Postman contra gateway real. **Ficou para a E7**:
   `OTEL_*`/`NEW_RELIC_*` no ConfigMap. **Secrets do app ainda inexistentes** (entram no deploy): `APP_GATEWAY_KEY`, `LAMBDA_RO_PASSWORD`, chaves JWT, SMTP, senhas de seed.
 - **2026-10-19 (sessão 6, E5)** — Credenciais do usuário colocadas em `~/.aws` (nunca repetir valores no chat). E4 fechada: app#11, #12, #13 mergeados.
   **E5** em dois PRs no `oficina-auth-lambda` (#1 código, #2 Terraform/deploy), ambos mergeados: Java 21 sem framework + SnapStart (decisão do usuário), `Cpf` como
@@ -220,3 +261,12 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
   (teste descartável). **Descobertas**: (1) falta o job de deploy da app (ver "Próximo passo"); (2) `terraform validate` passa sem o JAR; (3) o `plan` da CI roda de verdade
   (credenciais válidas) e falha só por SSM ausente; (4) PR empilhado só dispara CI depois de religar a base para `homolog`; (5) em `homolog` o `apply` falha no guard dos secrets
   sem criar nada (esperado). **Lições**: shell da sessão quebra com heredoc grande (usar a ferramenta de escrita); `printf` + arquivo para snippets Java.
+- **2026-10-28 (sessão 7)** — **Deploy da aplicação** (oficina-app#15, mergeado): `deploy.yml` (imagem no ECR com tag = SHA e Trivy antes do push → túnel SSM → secrets do GitHub Environment →
+  `kubectl apply -k` → rollout com rollback → `scripts/smoke-test.sh` → health pelo Ingress), stack sob demanda (push sem infra/sessão expirada = aviso verde; disparo manual = erro), composite
+  action filtrada por `Environment`, `secret.yaml` fora do kustomize, chave pública JWT derivada. **Achados ao testar:** `docker-compose` quebrado desde a E1 (`LAMBDA_RO_PASSWORD`); smoke test
+  rodado contra a app real no compose (11 verificações, negativos reprovam) confirmou o papel `oficina_auth_ro` no banco; **correção do E4** (filtro do gateway: anônimo → 401). Após o merge, o
+  deploy passou verde ignorando por sessão AWS expirada. **E6** em dois PRs no `oficina-auth-lambda` (#3 authorizer, #4 gateway; **abertos**): authorizer Java 21 + SnapStart fora da VPC, sem
+  banco/rede/segredo (78 testes, ataques clássicos de JWT, contrato com a `auth-function` validado com os JARs reais); Terraform do HTTP API (7 rotas, authorizer REQUEST, throttling 10/20 em
+  `/auth/token`, CORS, access log sem `Authorization`, X-Gateway-Key sobrescrito, URL no SSM); `deploy.yml` com `stack`/`plan`/`apply` + `scripts/smoke-gateway.sh` (400/401, negado no gateway pelo access
+  log, 429, fluxo completo do cliente). **Restaurados** `ci.yml` (`terraform-check` completo) e README, perdidos na reconciliação do #2 da E5. **Gap registrado:** infra-k8s e infra-database só aplicam
+  em push (sem apply manual).
