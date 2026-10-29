@@ -1,7 +1,7 @@
 name: CI
 
-# E0 (spec 08): build, testes e imagem em todo PR/push. Deploy (ECR push, kustomize,
-# smoke via API Gateway) entra em E4 como workflow separado, por ambiente.
+# E0 (spec 08): build, testes e imagem em todo PR/push. O deploy (ECR, kustomize, rollback, smoke test)
+# está em deploy.yml, por ambiente.
 on:
   push:
     branches: [main, homolog]
@@ -68,3 +68,25 @@ jobs:
           # Só CRITICAL com correção disponível: gate que falha sem patch vira ruído.
           severity: CRITICAL
           ignore-unfixed: true
+
+  # Lint dos workflows, dos scripts e dos manifestos. Não é check obrigatório: protege o que o deploy
+  # usa (um erro aqui só apareceria no primeiro deploy, que depende de uma sessão AWS ativa).
+  workflow-lint:
+    name: workflow-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest
+      - name: shellcheck dos scripts
+        run: shellcheck scripts/*.sh
+      - name: kustomize dos overlays
+        run: |
+          for env in hml prod; do
+            kubectl kustomize "k8s/overlays/${env}" > "/tmp/${env}.yaml"
+          done
+          # O Secret nunca pode voltar aos resources: cada `apply -k` o sobrescreveria com placeholders.
+          if grep -q '^kind: Secret' /tmp/hml.yaml /tmp/prod.yaml; then
+            echo "::error::Secret encontrado na saída do kustomize (k8s/base/secret.example.yaml deve ficar fora dos resources)"
+            exit 1
+          fi

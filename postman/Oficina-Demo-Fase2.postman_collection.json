@@ -38,7 +38,19 @@
     { "key": "ativasAntes", "value": "" },
     { "key": "baseTotalOs", "value": "" },
     { "key": "baseFinished", "value": "" },
-    { "key": "baseRevenue", "value": "" }
+    { "key": "baseRevenue", "value": "" },
+    {
+      "key": "gatewayUrl",
+      "value": ""
+    },
+    {
+      "key": "clientToken",
+      "value": ""
+    },
+    {
+      "key": "clientOrderId",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -777,6 +789,414 @@
             "pm.test('notificou servico concluido', () => pm.expect(assuntos).to.include('concluído'));",
             "pm.test('notificou veiculo entregue', () => pm.expect(assuntos).to.include('entregue'));"
           ] } }]
+        }
+      ]
+    },
+    {
+      "name": "11 — Área do cliente (E4 · requer API Gateway + Lambda)",
+      "description": "Fluxo do cliente autenticado por CPF: token → abrir OS → acompanhar → aprovar o orçamento.\n\n**Pré-requisitos:** `gatewayUrl` = URL do stage do API Gateway (as rotas `/auth/token` e `/me` só existem atrás dele; o token é emitido pelo Lambda), e as pastas 1–3 já executadas (cliente e veículo criados, token de ADMIN em `token`). O header `X-Gateway-Key` é injetado pelo próprio gateway — o cliente não o envia.\n\nAs rotas `/me/*` usam o token do cliente (`clientToken`); os dois passos de oficina (diagnóstico e envio para aprovação) usam o token de ADMIN.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{clientToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Token por CPF → 200 + access_token",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{clientCpfDigits}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/auth/token",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "auth",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Bearer com access_token', () => { pm.expect(body.access_token).to.be.a('string'); pm.expect(body.token_type).to.eql('Bearer'); });",
+                  "pm.collectionVariables.set('clientToken', body.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /me → dados do próprio cadastro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/me",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('é o cliente do token', () => pm.expect(pm.response.json().cpfCnpj).to.eql(pm.collectionVariables.get('clientCpfDigits')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /me/vehicles → só os veículos do cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/me/vehicles",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "me",
+                "vehicles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('lista o veículo do cliente', () => pm.expect(pm.response.json().map(v => v.id)).to.include(Number(pm.collectionVariables.get('vehicleId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /me/work-orders → 201 (abertura pelo cliente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": {{vehicleId}},\n  \"notes\": \"Barulho na suspensão dianteira\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/me/work-orders",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "me",
+                "work-orders"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const wo = pm.response.json();",
+                  "pm.test('nasce RECEIVED com número', () => { pm.expect(wo.status).to.eql('RECEIVED'); pm.expect(wo.orderNumber).to.match(/^OS-/); });",
+                  "pm.collectionVariables.set('clientOrderId', wo.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /me/work-orders → paginado, só as do cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/me/work-orders",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "me",
+                "work-orders"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('X-Total-Count presente', () => pm.expect(pm.response.headers.get('X-Total-Count')).to.not.be.null);",
+                  "pm.test('contém a OS aberta', () => pm.expect(pm.response.json().map(o => o.id)).to.include(Number(pm.collectionVariables.get('clientOrderId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /me/work-orders/{id} → acompanhar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/me/work-orders/{{clientOrderId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "me",
+                "work-orders",
+                "{{clientOrderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[oficina] PATCH start-diagnosis (token ADMIN)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/admin/work-orders/{{clientOrderId}}/start-diagnosis",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "admin",
+                "work-orders",
+                "{{clientOrderId}}",
+                "start-diagnosis"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[oficina] PATCH send-for-approval (token ADMIN)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/admin/work-orders/{{clientOrderId}}/send-for-approval",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "admin",
+                "work-orders",
+                "{{clientOrderId}}",
+                "send-for-approval"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('AWAITING_APPROVAL', () => pm.expect(pm.response.json().status).to.eql('AWAITING_APPROVAL'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /me/work-orders/{id}/approval → APPROVE",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/me/work-orders/{{clientOrderId}}/approval",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "me",
+                "work-orders",
+                "{{clientOrderId}}",
+                "approval"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('vai para execução', () => pm.expect(pm.response.json().status).to.eql('IN_EXECUTION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Isolamento: OS inexistente/de outro cliente → 404 (não 403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/me/work-orders/999999999",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "me",
+                "work-orders",
+                "999999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Papel: token de CLIENT em rota de oficina → 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/admin/clients",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "admin",
+                "clients"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

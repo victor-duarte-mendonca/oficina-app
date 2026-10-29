@@ -1,6 +1,7 @@
 package br.com.oficina.infrastructure.adapters.out.notification;
 
 import br.com.oficina.domain.event.WorkOrderStatusChangedEvent;
+import br.com.oficina.application.ports.out.BusinessMetricsPort;
 import br.com.oficina.application.ports.out.NotificationGatewayPort;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.Mailer;
@@ -24,6 +25,9 @@ public class EmailNotificationAdapter implements NotificationGatewayPort {
     @Inject
     Mailer mailer;
 
+    @Inject
+    BusinessMetricsPort metrics;
+
     @Override
     public void notifyStatusChange(WorkOrderStatusChangedEvent event) {
         if (event.customerEmail() == null || event.customerEmail().isBlank()) {
@@ -41,6 +45,7 @@ public class EmailNotificationAdapter implements NotificationGatewayPort {
             LOG.infof("Notificação de status (%s) enviada para %s referente à OS %s",
                 event.newStatus(), event.customerEmail(), event.orderNumber());
         } catch (Exception e) {
+            metrics.integrationFailed(BusinessMetricsPort.Integration.SMTP);
             LOG.errorf(e, "Falha ao enviar notificação por e-mail da OS %s", event.orderNumber());
         }
     }

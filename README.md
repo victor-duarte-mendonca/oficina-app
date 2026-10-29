@@ -493,7 +493,7 @@ substituíveis, requisito para o HPA escalar horizontalmente sem afetar sessões
 assinatura do JWT vêm de um Secret montado como volume, para que **todas as réplicas assinem com o mesmo
 par** (do contrário, um token emitido por um pod seria rejeitado por outro).
 
-**Infraestrutura provisionada (Terraform, detalhe em [`infra/README.md`](infra/README.md)):**
+**Infraestrutura provisionada (Terraform, detalhe em [`oficina-infra-k8s`](https://github.com/victor-duarte-mendonca/oficina-infra-k8s) e [`oficina-infra-database`](https://github.com/victor-duarte-mendonca/oficina-infra-database) (README de cada um)):**
 
 | Recurso            | Nome               | Observação                                                      |
 |--------------------|--------------------|-----------------------------------------------------------------|
@@ -573,17 +573,16 @@ Pré-requisito: cluster provisionado (seção seguinte) e `KUBECONFIG` apontando
 completo, incluindo geração dos `Secrets`, em [`k8s/README.md`](k8s/README.md):
 
 ```bash
-kubectl apply -f k8s/namespace.yaml -f k8s/configmap.yaml
-# Secrets (ECR, JWT, DB/SMTP) — ver k8s/README.md para os comandos completos
-kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml -f k8s/ingress.yaml \
-              -f k8s/hpa.yaml -f k8s/networkpolicy.yaml
+# Manifestos em kustomize: base + overlays por ambiente (hml | prod)
+kubectl apply -k k8s/overlays/hml
+# Secrets (ECR, JWT, DB/SMTP, gateway) — ver k8s/README.md para os comandos completos
 kubectl get pods,hpa,svc,ingress -n oficina
 ```
 
 ### Provisionamento da infraestrutura (Terraform)
 
 Passo a passo completo (bootstrap do backend remoto, variáveis obrigatórias, custo estimado e destruição ao
-final da sessão) em [`infra/README.md`](infra/README.md):
+final da sessão) em [`oficina-infra-k8s`](https://github.com/victor-duarte-mendonca/oficina-infra-k8s) e [`oficina-infra-database`](https://github.com/victor-duarte-mendonca/oficina-infra-database) (README de cada um):
 
 ```bash
 cd infra
@@ -601,8 +600,17 @@ terraform output application_url
 - Swagger/OpenAPI (gerado automaticamente pelo Quarkus/SmallRye): `http://localhost:8080/swagger-ui` —
   especificação OpenAPI em `http://localhost:8080/openapi`. Em perfil `prod` o Swagger fica
   **desabilitado** por hardening; use a collection abaixo contra o ambiente publicado.
-- Collection Postman: [`postman/Oficina-Mecanica.postman_collection.json`](postman/Oficina-Mecanica.postman_collection.json).
+- Collection Postman: [`postman/Oficina-Demo-Fase2.postman_collection.json`](postman/Oficina-Demo-Fase2.postman_collection.json).
 
 ### Vídeo demonstrativo
 
 [Link do vídeo](https://www.youtube.com/watch?v=ZaVSqljr3ek)
+
+## Documentação
+
+- [Arquitetura e diagramas](docs/arquitetura.md): componentes (com a fronteira da VPC), sequência de autenticação por CPF e de abertura/aprovação de OS
+- [ADRs](docs/adr/README.md): 17 decisões de arquitetura · [RFCs](docs/rfc/): nuvem, banco de dados e estratégia de autenticação
+- [Modelo de dados (ER)](docs/erd.md) e justificativa do banco ([RFC 0002](docs/rfc/0002-escolha-do-banco-de-dados.md))
+- [Runbook de sessão e custos](docs/RUNBOOK.md) · [Orçamento](docs/orcamento.md) · [Roteiro de validação em produção](docs/VALIDACAO-PROD.md)
+- Specs da Fase 3: [`specs/`](specs/00-visao-geral.md) · estado e checklist: [`specs/PROGRESSO.md`](specs/PROGRESSO.md)
+- Repositórios irmãos: [oficina-auth-lambda](https://github.com/victor-duarte-mendonca/oficina-auth-lambda), [oficina-infra-k8s](https://github.com/victor-duarte-mendonca/oficina-infra-k8s), [oficina-infra-database](https://github.com/victor-duarte-mendonca/oficina-infra-database)

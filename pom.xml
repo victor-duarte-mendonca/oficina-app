@@ -152,6 +152,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-logging-json</artifactId>
         </dependency>
+        <!-- Traces OTLP (E7): spans HTTP/JDBC e traceId/spanId no MDC. Exporta para o New Relic por OTLP, sem agente proprietário. -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-opentelemetry</artifactId>
+        </dependency>
 
         <!-- E-mail (notificações de mudança de status da OS) -->
         <dependency>
@@ -330,6 +335,11 @@
                                              (404/409/422/500) e não vaza stack trace — regressão aqui é
                                              silenciosa e cara. -->
                                         <include>br.com.oficina.interfaces.exception</include>
+                                        <!-- Regra de posse do recurso e filtro do gateway: são o que impede
+                                             um cliente de ler a OS de outro e uma rota de ser acessada sem
+                                             passar pelo API Gateway. Regressão aqui abre acesso (E4). -->
+                                        <include>br.com.oficina.application.security</include>
+                                        <include>br.com.oficina.interfaces.filter</include>
                                     </includes>
                                 </rule>
                             </rules>

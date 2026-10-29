@@ -109,6 +109,19 @@ public class WorkOrderRepositoryAdapter implements WorkOrderRepositoryPort {
     }
 
     @Override
+    public List<WorkOrder> findByClientId(Long clientId, int page, int size) {
+        return repository.find("client.id", Sort.descending("createdAt", "id"), clientId)
+            .page(Page.of(page, size)).list().stream()
+            .map(mapper::toDomain)
+            .toList();
+    }
+
+    @Override
+    public long countByClientId(Long clientId) {
+        return repository.count("client.id", clientId);
+    }
+
+    @Override
     public long countActive() {
         return repository.count(ACTIVE_FILTER, WorkOrderStatus.terminalStatuses());
     }

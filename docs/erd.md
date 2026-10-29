@@ -2,6 +2,8 @@
 
 > Diagrama de Entidade-Relacionamento (ER) do banco de dados PostgreSQL da aplicação Oficina Mecânica.
 > Estrutura finalizada em E1 com consistência temporal (TIMESTAMPTZ), status de cliente e índices de performance.
+>
+> Justificativa formal da escolha do banco: [RFC 0002](rfc/0002-escolha-do-banco-de-dados.md). Contexto geral: [arquitetura.md](arquitetura.md).
 
 ## Diagrama ER
 

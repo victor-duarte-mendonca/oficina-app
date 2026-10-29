@@ -19,9 +19,15 @@ data:
   MAILER_FROM: "nao-responda@oficina.com"
   MAILER_PORT: "587"
   MAILER_START_TLS: "REQUIRED"
-  # true para a gravação do vídeo demonstrativo (login pronto) — em produção real, recriar
-  # credenciais padrão a cada rollout não faz sentido; voltar para "false" depois da demo.
-  # Defina senhas reais em APP_SEED_ADMIN_PASSWORD/APP_SEED_MECHANIC_PASSWORD no secret.yaml.
-  APP_SEED_ENABLED: "true"
+  # Seed de usuários: desligado por padrão (produção). O overlay hml liga para a demonstração;
+  # as senhas vêm de APP_SEED_ADMIN_PASSWORD/APP_SEED_MECHANIC_PASSWORD no Secret.
+  APP_SEED_ENABLED: "false"
+  # Nome do ambiente (sobrescrito pelo overlay); sai como campo "env" nos logs JSON.
+  APP_ENV: "prod"
+  # Traces (E7): fração amostrada pelo OTLP. O SDK só liga se o Secret trouxer NEW_RELIC_LICENSE_KEY
+  # (a pipeline define OTEL_SDK_DISABLED). hml sobrescreve para 1.0.
+  OTEL_TRACES_SAMPLER_ARG: "0.2"
+  # Pool de conexões por réplica: 4 réplicas x 8 = 32, bem abaixo do teto de ~112 do db.t4g.micro.
+  QUARKUS_DATASOURCE_JDBC_MAX_SIZE: "8"
   APP_SEED_ADMIN_USERNAME: "admin"
   APP_SEED_MECHANIC_USERNAME: "mecanico"

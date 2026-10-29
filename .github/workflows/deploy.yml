@@ -1,0 +1,318 @@
+name: Deploy
+
+# Deploy da aplicação (spec 08 §6): imagem no ECR -> kustomize no k3s pelo túnel SSM -> rollout com
+# rollback -> smoke test. homolog -> hml / homologacao ; main -> prod / producao (aprovação do usuário).
+#
+# hml sobe SOB DEMANDA (spec 06 §4.1): num push, se a stack ou a sessão AWS não estiverem de pé, o deploy
+# é ignorado com um aviso — um merge não fica vermelho por falta de infraestrutura. Depois de subir a
+# infra (oficina-infra-k8s e oficina-infra-database), dispare manualmente: Actions > Deploy > Run workflow
+# > Use workflow from: homolog. No disparo manual, a falta de stack é erro.
+on:
+  push:
+    branches: [main, homolog]
+    # Só o que muda o que roda no cluster. Documentação não dispara deploy.
+    paths:
+      - "src/**"
+      - "pom.xml"
+      - "Dockerfile"
+      - "docker-entrypoint.sh"
+      - "k8s/**"
+      - "scripts/smoke-test.sh"
+      - ".github/workflows/deploy.yml"
+      - ".github/actions/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
+  # hml e prod são stacks separadas; o workspace sai da branch.
+  STACK_ENV: ${{ github.ref_name == 'main' && 'prod' || 'hml' }}
+
+jobs:
+  image:
+    name: image
+    runs-on: ubuntu-latest
+    env:
+      # Credenciais via ambiente (e não via configure-aws-credentials): a action valida o token na
+      # entrada e falharia antes de eu poder tratar "sessão expirada" como "stack fora do ar".
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+    outputs:
+      up: ${{ steps.stack.outputs.up }}
+      image: ${{ steps.stack.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: A stack existe? (ECR publicado pelo oficina-infra-k8s)
+        id: stack
+        run: |
+          set +e
+          out="$(aws ssm get-parameter --name "/oficina/${STACK_ENV}/ecr_repository_url" \
+            --query Parameter.Value --output text 2>&1)"
+          rc=$?
+          set -e
+
+          reason=""
+          if [ "$rc" -eq 0 ]; then
+            echo "up=true" >> "$GITHUB_OUTPUT"
+            echo "image=${out}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif echo "$out" | grep -q "ParameterNotFound"; then
+            reason="a stack ${STACK_ENV} não está de pé (sem /oficina/${STACK_ENV}/ecr_repository_url): aplique o oficina-infra-k8s neste workspace"
+          elif echo "$out" | grep -Eq "ExpiredToken|InvalidClientTokenId|UnrecognizedClient|security token|Unable to locate credentials"; then
+            reason="sessão AWS Academy inativa ou credenciais expiradas: rode set-aws-session-secrets.sh"
+          else
+            echo "::error::Falha inesperada ao consultar o SSM:"
+            echo "$out"
+            exit 1
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "::error::Deploy manual impossível: ${reason}"
+            exit 1
+          fi
+          echo "::notice::Deploy ignorado: ${reason}. Depois de subir a infra, dispare o workflow manualmente."
+          echo "up=false" >> "$GITHUB_OUTPUT"
+
+      - name: Login no ECR
+        if: steps.stack.outputs.up == 'true'
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.stack.outputs.up == 'true'
+
+      - name: Build da imagem
+        if: steps.stack.outputs.up == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # Carrega no daemon local para o scan rodar ANTES do push: imagem vulnerável não chega ao registro.
+          load: true
+          tags: ${{ steps.stack.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan da imagem (Trivy)
+        if: steps.stack.outputs.up == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.stack.outputs.image }}
+          format: table
+          exit-code: "1"
+          # Só CRITICAL com correção disponível: gate que falha sem patch vira ruído.
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Push para o ECR (tag = SHA do commit; nunca :latest)
+        if: steps.stack.outputs.up == 'true'
+        run: docker push "${{ steps.stack.outputs.image }}"
+
+  deploy:
+    name: deploy
+    needs: [image]
+    if: needs.image.outputs.up == 'true'
+    runs-on: ubuntu-latest
+    # homolog -> homologacao ; main -> producao (required reviewer).
+    environment: ${{ github.ref_name == 'main' && 'producao' || 'homologacao' }}
+    concurrency:
+      group: deploy-${{ github.ref_name == 'main' && 'prod' || 'hml' }}
+      cancel-in-progress: false
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      IMAGE: ${{ needs.image.outputs.image }}
+    steps:
+      # Antes da validação: ela lê o overlay do ambiente para saber se o seed de usuários está ligado.
+      - uses: actions/checkout@v4
+
+      - name: Secrets do environment definidos?
+        env:
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          LAMBDA_RO_PASSWORD: ${{ secrets.LAMBDA_RO_PASSWORD }}
+          JWT_PRIVATE_KEY_PEM: ${{ secrets.JWT_PRIVATE_KEY_PEM }}
+          APP_GATEWAY_KEY: ${{ secrets.APP_GATEWAY_KEY }}
+          APP_SEED_ADMIN_PASSWORD: ${{ secrets.APP_SEED_ADMIN_PASSWORD }}
+          APP_SEED_MECHANIC_PASSWORD: ${{ secrets.APP_SEED_MECHANIC_PASSWORD }}
+        run: |
+          missing=""
+          # Sem LAMBDA_RO_PASSWORD o Flyway não resolve o placeholder da migration V6 e a aplicação nem sobe.
+          for name in DB_USERNAME DB_PASSWORD LAMBDA_RO_PASSWORD JWT_PRIVATE_KEY_PEM; do
+            [ -n "${!name:-}" ] || missing="$missing $name"
+          done
+          if [ "$STACK_ENV" = "prod" ]; then
+            # Em produção o filtro do gateway não pode ficar desligado.
+            [ -n "${APP_GATEWAY_KEY:-}" ] || missing="$missing APP_GATEWAY_KEY"
+          fi
+          # Seed ligado no overlay do ambiente: sem as senhas não há como logar (e o smoke test autenticado seria pulado).
+          if grep -q 'APP_SEED_ENABLED: "true"' "k8s/overlays/${STACK_ENV}/kustomization.yaml"; then
+            for name in APP_SEED_ADMIN_PASSWORD APP_SEED_MECHANIC_PASSWORD; do
+              [ -n "${!name:-}" ] || missing="$missing $name"
+            done
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets ausentes no environment (Settings > Environments):$missing"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Acesso ao cluster (túnel SSM)
+        uses: ./.github/actions/k3s-kubeconfig
+        with:
+          environment: ${{ env.STACK_ENV }}
+
+      - name: Namespace e secret de pull do ECR (token de 12 h, renovado a cada deploy)
+        run: |
+          kubectl apply -f k8s/base/namespace.yaml
+          registry="${IMAGE%%/*}"
+          kubectl create secret docker-registry ecr-registry-secret \
+            --namespace oficina \
+            --docker-server="$registry" \
+            --docker-username=AWS \
+            --docker-password="$(aws ecr get-login-password --region "$AWS_REGION")" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Secret da aplicação (nunca commitado com valor real)
+        env:
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          LAMBDA_RO_PASSWORD: ${{ secrets.LAMBDA_RO_PASSWORD }}
+          APP_GATEWAY_KEY: ${{ secrets.APP_GATEWAY_KEY }}
+          MAILER_HOST: ${{ secrets.MAILER_HOST }}
+          MAILER_USERNAME: ${{ secrets.MAILER_USERNAME }}
+          MAILER_PASSWORD: ${{ secrets.MAILER_PASSWORD }}
+          APP_SEED_ADMIN_PASSWORD: ${{ secrets.APP_SEED_ADMIN_PASSWORD }}
+          APP_SEED_MECHANIC_PASSWORD: ${{ secrets.APP_SEED_MECHANIC_PASSWORD }}
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+        run: |
+          # O endpoint do RDS vem do contrato SSM publicado pelo oficina-infra-database; nada é copiado à mão.
+          if ! DB_HOST="$(aws ssm get-parameter --name "/oficina/${STACK_ENV}/db_endpoint" \
+                --query Parameter.Value --output text)"; then
+            echo "::error::Sem /oficina/${STACK_ENV}/db_endpoint: aplique o oficina-infra-database neste workspace antes."
+            exit 1
+          fi
+          kubectl create secret generic oficina-secrets \
+            --namespace oficina \
+            --from-literal=DB_HOST="$DB_HOST" \
+            --from-literal=DB_USERNAME="$DB_USERNAME" \
+            --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+            --from-literal=LAMBDA_RO_PASSWORD="$LAMBDA_RO_PASSWORD" \
+            --from-literal=APP_GATEWAY_KEY="${APP_GATEWAY_KEY:-}" \
+            --from-literal=MAILER_HOST="${MAILER_HOST:-}" \
+            --from-literal=MAILER_USERNAME="${MAILER_USERNAME:-}" \
+            --from-literal=MAILER_PASSWORD="${MAILER_PASSWORD:-}" \
+            --from-literal=APP_SEED_ADMIN_PASSWORD="${APP_SEED_ADMIN_PASSWORD:-}" \
+            --from-literal=APP_SEED_MECHANIC_PASSWORD="${APP_SEED_MECHANIC_PASSWORD:-}" \
+            --from-literal=NEW_RELIC_LICENSE_KEY="${NEW_RELIC_LICENSE_KEY:-}" \
+            --from-literal=OTEL_SDK_DISABLED="$([ -n "${NEW_RELIC_LICENSE_KEY:-}" ] && echo false || echo true)" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Secret das chaves JWT (o mesmo par para todas as réplicas)
+        env:
+          JWT_PRIVATE_KEY_PEM: ${{ secrets.JWT_PRIVATE_KEY_PEM }}
+        run: |
+          umask 077
+          key_dir="$RUNNER_TEMP/jwt"
+          mkdir -p "$key_dir"
+          printf '%s\n' "$JWT_PRIVATE_KEY_PEM" > "$key_dir/privateKey.pem"
+          # A chave pública é DERIVADA da privada: um único secret compartilhado com o Lambda, sem risco
+          # de as duas metades ficarem fora de sincronia.
+          if ! openssl rsa -in "$key_dir/privateKey.pem" -pubout -out "$key_dir/publicKey.pem" 2>/dev/null; then
+            echo "::error::JWT_PRIVATE_KEY_PEM inválida: esperado RSA em PKCS#8 (gerada por generate-keys.sh)"
+            exit 1
+          fi
+          kubectl create secret generic oficina-jwt-keys \
+            --namespace oficina \
+            --from-file=privateKey.pem="$key_dir/privateKey.pem" \
+            --from-file=publicKey.pem="$key_dir/publicKey.pem" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          rm -rf "$key_dir"
+
+      # A imagem entra no overlay do checkout efêmero do runner (nada é commitado): o deployment usa um
+      # placeholder, e o kustomize troca pelo ECR + SHA. Substitui o sed no YAML da Fase 2.
+      - name: Aplicar manifestos (kustomize)
+        id: apply
+        run: |
+          overlay="k8s/overlays/${STACK_ENV}"
+          ecr_repo="${IMAGE%:*}"
+          {
+            echo ""
+            echo "images:"
+            echo "  - name: CHANGE_ME_ECR_REPOSITORY_URL"
+            echo "    newName: ${ecr_repo}"
+            echo "    newTag: ${GITHUB_SHA}"
+          } >> "${overlay}/kustomization.yaml"
+          kubectl apply -k "$overlay"
+
+      - name: Aguardar rollout
+        run: kubectl -n oficina rollout status deployment/oficina-app --timeout=300s
+
+      - name: Smoke test (port-forward do Service)
+        env:
+          GATEWAY_KEY: ${{ secrets.APP_GATEWAY_KEY }}
+          ADMIN_PASSWORD: ${{ secrets.APP_SEED_ADMIN_PASSWORD }}
+        run: |
+          seed_enabled="$(kubectl -n oficina get configmap oficina-config -o jsonpath='{.data.APP_SEED_ENABLED}')"
+          [ "$seed_enabled" = "true" ] || ADMIN_PASSWORD=""
+
+          kubectl -n oficina port-forward svc/oficina-service 18080:80 > /tmp/port-forward.log 2>&1 &
+          pf_pid=$!
+          trap 'kill $pf_pid 2>/dev/null || true' EXIT
+          for _ in $(seq 1 20); do
+            curl -sf http://localhost:18080/q/health/live > /dev/null && break
+            sleep 2
+          done
+          BASE_URL=http://localhost:18080 GATEWAY_KEY="$GATEWAY_KEY" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+            bash scripts/smoke-test.sh
+
+      # Valida a cadeia Traefik -> Service -> pod, que o port-forward não exercita. O curl roda DENTRO da
+      # EC2, via SSM: a porta 80 do security group é restrita ao IP do aluno e ao API Gateway, e o runner tem
+      # IP dinâmico — abrir o security group para o runner seria abri-lo para a internet inteira.
+      - name: Health check pelo Ingress (de dentro do node)
+        run: |
+          # shellcheck disable=SC2016  # o $(seq ...) entre aspas simples executa NO NODE, não no runner
+          cmd_id="$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --parameters 'commands=["for i in $(seq 1 20); do curl -sf http://localhost/q/health/live && exit 0; sleep 5; done; exit 1"]' \
+            --query 'Command.CommandId' --output text)"
+          for _ in $(seq 1 30); do
+            status="$(aws ssm get-command-invocation --command-id "$cmd_id" --instance-id "$INSTANCE_ID" \
+              --query 'Status' --output text 2>/dev/null || echo Pending)"
+            case "$status" in
+              Success) break ;;
+              Failed|Cancelled|TimedOut) echo "::error::O Ingress não respondeu no node"; exit 1 ;;
+            esac
+            sleep 5
+          done
+          [ "$status" = "Success" ] || { echo "::error::Timeout aguardando o Ingress"; exit 1; }
+          echo "Ingress respondeu."
+
+      - name: Rollback automático se o rollout ou o smoke test falharem
+        if: failure() && steps.apply.conclusion == 'success'
+        run: |
+          echo "::warning::Deploy falhou — revertendo para a revisão anterior (no primeiro deploy não há revisão anterior)."
+          kubectl -n oficina rollout undo deployment/oficina-app || true
+          kubectl -n oficina get pods -o wide || true
+          kubectl -n oficina describe deployment/oficina-app || true
+          kubectl -n oficina logs -l app=oficina-app --tail=100 --all-containers || true
+
+      - name: Resumo
+        if: success()
+        run: |
+          app_url="$(aws ssm get-parameter --name "/oficina/${STACK_ENV}/application_url" \
+            --query Parameter.Value --output text 2>/dev/null || echo "indisponível")"
+          {
+            echo "### Aplicação publicada — ${STACK_ENV}"
+            echo ""
+            echo "- Imagem: \`${IMAGE}\`"
+            echo "- URL: ${app_url} (a porta 80 só responde ao CIDR em \`ALLOWED_CIDR\` e ao API Gateway)"
+            echo "- Lembrete de custo: **destrua a stack ao fim da sessão** (auth-lambda → infra-database → infra-k8s)."
+          } >> "$GITHUB_STEP_SUMMARY"

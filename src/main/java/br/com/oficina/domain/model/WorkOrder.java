@@ -257,6 +257,24 @@ public class WorkOrder {
         }
     }
 
+    /**
+     * Instante em que a OS entrou no status atual, a partir das colunas {@code *_at} que o
+     * aggregate já mantém. Alimenta a métrica de tempo por status sem tabela nem job de agregação.
+     * Vazio quando o instante ainda não existe (ex.: OS recém-criada, antes da persistência).
+     */
+    public java.util.Optional<OffsetDateTime> statusEnteredAt() {
+        OffsetDateTime enteredAt = switch (status) {
+            case RECEIVED -> createdAt;
+            case IN_DIAGNOSIS -> diagnosisStartedAt;
+            case AWAITING_APPROVAL -> sentForApprovalAt;
+            case IN_EXECUTION -> executionStartedAt;
+            case FINISHED -> finishedAt;
+            case DELIVERED -> deliveredAt;
+            case CANCELLED -> cancelledAt;
+        };
+        return java.util.Optional.ofNullable(enteredAt);
+    }
+
     public long getExecutionDurationMinutes() {
         if (executionStartedAt == null || finishedAt == null) {
             return 0;

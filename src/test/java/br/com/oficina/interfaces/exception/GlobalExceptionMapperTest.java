@@ -28,6 +28,7 @@ class GlobalExceptionMapperTest {
     @BeforeEach
     void setUp() {
         mapper = new GlobalExceptionMapper();
+        mapper.metrics = org.mockito.Mockito.mock(br.com.oficina.application.ports.out.BusinessMetricsPort.class);
     }
 
     @SuppressWarnings("unchecked")
