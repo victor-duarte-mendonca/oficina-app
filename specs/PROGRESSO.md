@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-28** (sessão 8 — apply manual, E7, E8 e E9 escritos e em PR; falta só a **sessão AWS consolidada em produção**, guiada por `docs/VALIDACAO-PROD.md`).
+> Última atualização: **2026-10-29** (sessão 9 — **validação em produção executada**; ver "Primeira coisa da próxima sessão").
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -11,53 +11,82 @@ Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-
 |---|---|---|---|
 | E0 Split dos repositórios + proteção + pipelines | 08 | todos | ✅ concluída |
 | E1 Modelagem do banco (V5, `clients.status`, pool) | 01 | oficina-app | ✅ concluída |
-| E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | ✅ concluída (hml aplicada; prod ainda não) |
-| E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | ✅ concluída (hml aplicada; prod ainda não) |
-| E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ✅ concluída (código e CI; deploy em cluster pendente) |
-| E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ✅ concluída (código + Terraform; validação em AWS pendente) |
-| — Deploy da aplicação (pipeline; spec 08 §6) | 08 | oficina-app | ✅ mergeado (app#15); validação em AWS pendente |
-| E6 API Gateway + authorizer | 03 | oficina-auth-lambda | ✅ mergeada (#3 e #4); validação em AWS pendente |
-| E7 Observabilidade fim-a-fim (New Relic) | 05 | app + infra + lambda | ✅ mergeada (app#19, infra-k8s#8 e #9, auth-lambda#5); validação em AWS pendente |
+| E2 Infra K8s (Terraform, workspaces hml/prod, SSM) | 06 | oficina-infra-k8s | ✅ concluída e **validada em prod** (sessão 9) |
+| E3 Infra DB (Terraform, módulo completo) | 07 | oficina-infra-database | ✅ concluída e **validada em prod** (sessão 9; TLS obrigatório) |
+| E4 App: role CLIENT, ownership, correlação, métricas | 04 | oficina-app | ✅ concluída e **validada em prod** (sessão 9) |
+| E5 Lambda de autenticação por CPF | 02 | oficina-auth-lambda | ✅ concluída e **validada em prod** (sessão 9; SnapStart 575 ms) |
+| — Deploy da aplicação (pipeline; spec 08 §6) | 08 | oficina-app | ✅ mergeado (app#15); **validado em prod** (sessão 9; rollback não exercitado) |
+| E6 API Gateway + authorizer | 03 | oficina-auth-lambda | ✅ mergeada (#3 e #4); **validada em prod** (sessão 9; fluxo do cliente, 401/403/429) |
+| E7 Observabilidade fim-a-fim (New Relic) | 05 | app + infra + lambda | ✅ mergeada (app#19, infra-k8s#8 e #9, auth-lambda#5); **agentes e dashboards no ar; dados, alertas e Synthetics por validar** |
 | E8 Documentação arquitetural (ADRs, diagramas, READMEs) | 09 | todos | 🟡 escrita: 17 ADRs, 3 RFCs, diagramas em `docs/` e seção Documentação nos READMEs (PRs abertos); revisar links após promover para `main` |
 | E9 Runbook de sessão e custos | 10 | oficina-app (`docs/`) | 🟡 escrito (`RUNBOOK.md`, `orcamento.md`, `VALIDACAO-PROD.md`, `scripts/k3s-exec.sh`); **execução ponta a ponta e medições de tempo/custo pendentes (sessão AWS)** |
 
 ## Próximo passo
 
-**Todo o código (E0–E7) e a documentação (E8) e o runbook (E9) estão escritos e MERGEADOS em `homolog` nos 4 repositórios.** Nada está de pé na AWS. Falta a
-**sessão AWS consolidada, em produção (`main`, workspace `prod`)**, que valida todos os ⬜ do checklist. Ela começa **na próxima sessão de trabalho** (combinado em 2026-10-28).
+**A sessão AWS em produção FOI executada na sessão 9 (2026-10-29)** e validou quase todo o checklist. O que falta validar está em **"Primeira coisa da próxima sessão"** abaixo. Código e docs estão em `homolog`
+e **`main`** (promoção feita nos 4 repos); os ajustes feitos só em `main` durante a sessão precisam voltar para `homolog` (ver "Dívida de sincronização").
 
-> **Guia único da sessão: [`docs/VALIDACAO-PROD.md`](../docs/VALIDACAO-PROD.md)** (decisões, secrets, promoção `homolog` → `main`, roteiro passo a passo,
-> checklist com comandos e planos B). Operação e custo: [`docs/RUNBOOK.md`](../docs/RUNBOOK.md) e [`docs/orcamento.md`](../docs/orcamento.md).
+> **Estado ao encerrar a sessão 9:** os `destroy` foram a última ação do usuário no fim do Lab (ordem em "Encerramento"). **Conferir primeiro** se a varredura de órfãos (RUNBOOK §6) voltou vazia e se o saldo foi anotado em
+> `docs/orcamento.md`. Uma nova sessão do Academy exige **subir tudo de novo** (≈ 25 min): *Run workflow* em `main` (**não precisa de novo PR de promoção**), na ordem abaixo.
 
-### PR aberto de propósito: `oficina-app#22` (NÃO mergear antes da sessão)
+### Primeira coisa da próxima sessão: o que NÃO foi validado
 
-Liga o seed de usuários em `prod` (`APP_SEED_ENABLED: "true"`) e faz o `deploy.yml` exigir `APP_SEED_ADMIN_PASSWORD`/`APP_SEED_MECHANIC_PASSWORD` sempre que o overlay ligar o seed.
-**Como a `main` publica em produção, o #22 fica aberto até a sessão**: mergear em `homolog` já não dispara nada na AWS, mas ele vai para `main` na promoção e então o deploy de prod
-sobe com o seed. Decisão D1 (usuário, 2026-10-28): ligar para a validação e **reverter para `"false"` depois da gravação do vídeo**.
+Como o ambiente foi destruído, cada item abaixo exige uma sessão AWS nova. **Subir na ordem:** (1) `oficina-infra-k8s` → Terraform `prod` · (2) `oficina-infra-database` → Terraform `prod` · (3) `oficina-app` → Deploy
+· (4) `oficina-auth-lambda` → Deploy · (5) `oficina-infra-k8s` → Observability `prod`. Todos com *Use workflow from: `main`*, `workspace=prod`, `confirm` vazio e aprovação do Environment `producao`. Antes: Start Lab, `set-aws-session-secrets.sh`,
+conferir `ALLOWED_CIDR` contra o IP atual (`curl -s https://checkip.amazonaws.com`).
 
-### Protocolo de abertura da próxima sessão (o Claude faz isto ANTES de qualquer outra coisa)
+1. **E7 — New Relic na interface (a maior pendência).** Os agentes sobem (6 pods `Running`, licença lida do SSM), mas **ninguém olhou os dados**: `FROM Span SELECT count(*) WHERE entity.name = 'oficina-mecanica'`; `FROM Metric SELECT count(*)
+   WHERE metricName LIKE 'oficina_%'`; os 2 dashboards com dados; **confirmar as NRQL** contra dados reais (nomes de span, `_sum`/`_count` do timer, `K8sContainerSample.reason`); as 6 políticas; **disparar 2 alertas de propósito**
+   (`kubectl -n oficina delete pod -l app=oficina-app` e uma transição inválida de OS) e o e-mail chegar; monitor Synthetics em `/health`; logs do gateway/Lambdas com `correlationId` (forwarder `oficina-prod-newrelic-logs` existe, falta ver
+   no New Relic); `grep` nos logs sem CPF completo nem token.
+2. **Demonstração de escala do HPA** (RUNBOOK §5): carga contra o EIP (`curl` em paralelo em `http://<EIP>/q/health/ready`; `hey` não está instalado), 2 → 4 réplicas sem pod `Pending`, scale-in depois de ~3 min, `kubectl top nodes/pods -A`
+   durante a carga (hoje só medimos em repouso: node com CPU 5%, memória 65%).
+3. **`X-Correlation-Id` ponta a ponta:** o gateway repassa o `requestId` e a app o usa nos logs (só provamos que a app ecoa o header recebido e que o log JSON tem `mdc`/`env`/`service.name`).
+4. **Rollback automático do deploy da app** (ainda não exercitado; o rollout falhou duas vezes por outro motivo e não havia revisão anterior). Opcional: forçar imagem inválida em `hml`, não em `prod`.
+5. **Postman com a opção Run** (sequência inteira): usar `postman/Oficina-Prod-Run.postman_collection.json` (sem as pastas 0, 5 e 10, que dependem de `/q/*` e Mailpit; a pasta 6 tem 1 requisição que usa o token de aprovação por e-mail e pode falhar).
+   Ver "Postman" abaixo.
+6. **E0:** acesso do `soat-architecture` aos 4 repositórios (D5, convite na org).
+7. **`docs/orcamento.md`:** saldo do Academy antes/depois e tempos medidos (subida ≈ 20-25 min). Não foi preenchido.
 
-1. Sincronizar os 4 repos em `homolog` (`git fetch` + `merge --ff-only`) e ler este arquivo e `docs/VALIDACAO-PROD.md`.
-2. **Levantar tudo que está pendente** e apresentar ao usuário numa lista única, separada em: (a) **do usuário** (decisões D2–D5, secrets de `producao`, par JWT, conta New Relic,
-   `ALLOWED_CIDR`, credenciais do Academy, merge do #22), (b) **do Claude** (PRs abertos: `gh pr list` nos 4 repos; promoções `homolog` → `main` a abrir; PR de sincronização, se houver divergência
-   por squash), (c) **conferências automáticas**: o que já dá para checar sem AWS (secrets existentes via `gh secret list --env producao -R ...` — só nomes, nunca valores —, estado dos PRs, CI verde na `homolog`).
-3. Só então seguir `VALIDACAO-PROD.md` §4 (passo 0 em diante). **Avisar o usuário antes do primeiro passo que precise da AWS de pé.**
+### Dívida de sincronização `main` → `homolog` (fazer ANTES de qualquer feature nova)
 
-### Pendente, em uma olhada (estado em 2026-10-28)
+Os PRs de promoção usaram a branch `promote/homolog-to-main` (merge `-s ours`, árvore idêntica à `homolog`) para contornar o conflito de squash, e **quatro correções foram direto para `main`** (exceção ao fluxo, porque um push em
+`homolog` de `oficina-infra-k8s`/`oficina-infra-database` dispara o `apply` de `hml`). `homolog` não tem essas correções:
 
-| Dono | Item | Onde |
-|---|---|---|
-| Usuário | Mergear o PR de docs de fechamento (se ainda aberto) | oficina-app |
-| Usuário | **Secrets de `producao`** nos 4 repos e **um** par JWT (mesma chave na app e no Lambda); inclui `APP_SEED_ADMIN_PASSWORD`/`APP_SEED_MECHANIC_PASSWORD` (D1) e, no auth-lambda, `APP_SEED_ADMIN_PASSWORD` | `VALIDACAO-PROD.md` §3.1–3.2 |
-| Usuário | D2 conta New Relic (opcional: sem ela a E7 não é validada, nada quebra) · D3 aceitar 401 para anônimo · D4 aceitar trace começando na app · D5 `soat-architecture` | `VALIDACAO-PROD.md` §1 |
-| Usuário | Conferir `ALLOWED_CIDR` (IP mudou?), ter `aws` CLI, `gh`, `hey`, Postman; no dia: Start Lab + `set-aws-session-secrets.sh` | `VALIDACAO-PROD.md` §3.3–3.4 |
-| Claude | Abrir os PRs `homolog` → `main` **durante a sessão**, um repo por vez na ordem de subida; PR de sincronização `main` → `homolog` se o squash divergir | `VALIDACAO-PROD.md` §2 |
-| Claude | Executar o roteiro, marcar os ⬜ que virarem ✅, preencher `docs/orcamento.md`, destruir tudo e varrer órfãos | `VALIDACAO-PROD.md` §4–§8 |
-| Depois | Reverter o seed de `prod`; documento PDF e vídeo (do usuário) | PROGRESSO "Pendências" |
+| Repo | Só em `main` (falta em `homolog`) |
+|---|---|
+| `oficina-infra-k8s` | #12: crases em `` `from`, `to` `` (palavras reservadas do NRQL) em `observability/dashboards/negocio.json.tftpl` |
+| `oficina-auth-lambda` | #8: `plan` com chave RSA descartável (o `data.tls_public_key` não aceita placeholder) · #9, #10, #11: `smoke-test.sh`/`smoke-gateway.sh` (paginação da CLI e rajada de 150 req. no throttling) |
+| `oficina-app`, `oficina-infra-database` | só os merges de promoção (#24, #4), sem diferença de árvore |
 
-**Se algo falhar:** `gh run view <id> --log-failed`; planos B por risco em `VALIDACAO-PROD.md` §7. Correções vão por `feature/x` → `homolog` → `main`.
+**Como sincronizar:** branch a partir de `main`, `git merge -s ours origin/homolog`, PR para `homolog` (a árvore resultante é a da `main`). **Atenção:** um push em `homolog` de `infra-k8s`/`infra-database` dispara o `apply`
+de `hml`: sem sessão AWS ativa ele falha (vermelho, inofensivo); **com sessão ativa, cria infra de hml**. Faça o sync sem sessão ativa ou cancele o run.
 
-**Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Nunca feature direto para `main`.
+### Melhorias de código a fazer (PRs `feature/x` → `homolog` → `main`)
+
+- `oficina-app/.github/workflows/deploy.yml`: **não criar** as chaves `MAILER_*` quando o secret estiver vazio. Hoje `--from-literal=MAILER_HOST=""` vence o padrão `${MAILER_HOST:localhost}` do `application.properties` e o
+  Quarkus recusa subir (`SRCFG00040`). **Contornado** com o secret `MAILER_HOST=localhost` em `producao`; o bug continua latente em `hml`.
+- `oficina-app/k8s/base/deployment.yaml`: **startup probe** de 60 s (20 × 3 s) é justa: dois pods subindo juntos no `t3.medium` com o New Relic mataram dois reinícios. Subir `failureThreshold` (ex.: 40) ou dar mais CPU de request.
+- `oficina-auth-lambda/scripts/smoke-test.sh`: esperar o alias ficar `Active` (`aws lambda wait function-active-v2`) antes de invocar; com SnapStart a primeira invocação logo após o `apply` dá `ResourceConflictException` (`Pending`).
+- Reverter o seed de `prod`: `k8s/overlays/prod/kustomization.yaml` → `APP_SEED_ENABLED: "false"` (depois da gravação do vídeo).
+
+### Postman (opção Run)
+
+Importar `oficina-app/postman/Oficina-Prod-Run.postman_collection.json` (as variáveis vêm preenchidas: `gatewayUrl` e `baseUrl` = URL do gateway; **preencher só `adminPass` e `mecanicoPass`** na aba Variables da coleção). A URL do gateway
+muda a cada sessão (`aws ssm get-parameter --name /oficina/prod/api_gateway_url`): **atualizar `gatewayUrl` e `baseUrl`**. Desmarcar qualquer Environment de outro projeto. Nas versões novas do Postman o Runner usa cópia temporária das variáveis:
+em *Run → Advanced settings*, marcar **Persist/Keep variable values**, senão `token` e `clientId` não chegam às pastas seguintes. Ordem: 1, 2, 3, 4, 6, 7, 8, 9, 11 (padrão). A coleção `Oficina-Prod.postman_collection.json` (todas as pastas) serve para rodar pastas
+avulsas; os scripts gravam em `pm.collectionVariables`.
+
+### Encerramento (ordem inversa; sempre *Use workflow from: `main`*, `workspace=prod`, `confirm = destroy-prod`)
+
+1. `oficina-infra-k8s` → **Observability** (opcional; só apaga dashboards/alertas no New Relic; apague para não duplicar na sessão seguinte, o state fica no bucket da conta Academy, que é reciclada)
+2. `oficina-auth-lambda` → **Deploy**
+3. `oficina-app`: nada a destruir (morre com o cluster)
+4. `oficina-infra-database` → **Terraform** (o RDS é o recurso mais caro se esquecido)
+5. `oficina-infra-k8s` → **Terraform**
+6. Varredura de órfãos (RUNBOOK §6); se um destroy falhar (ENI do Lambda segura a subnet), **rodar de novo**; saldo em `docs/orcamento.md`; End Lab.
+
+**Fluxo de PRs (spec 08 §2):** `feature/x` → PR para `homolog` → valida → PR `homolog` → `main`. Exceções desta sessão documentadas em "Dívida de sincronização".
 
 ## Checklist de validação por etapa
 
@@ -70,78 +99,68 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 **E1 — banco (V5/V6)**
 - ✅ migrations V5/V6 executadas contra **PostgreSQL 16 real** (Testcontainers); suíte passou de 265 para 429 testes
 - ✅ bugs reais corrigidos (CHECK de status, `app_users.updated_at`, nome do banco, placeholder do Flyway, `order_number`)
-- ⬜ migrations aplicadas num **RDS real** (acontece quando a app sobe em `hml`)
+- ✅ migrations V1–V6 aplicadas num **RDS real** com TLS, em `prod` (sessão 9; Flyway: "version 6, up to date")
 
 **E2 — infra K8s**
 - ✅ `fmt`/`validate`/`tflint`/`trivy`/`actionlint` · ✅ `apply` em `hml` (39 recursos) · ✅ 6 parâmetros SSM · ✅ `destroy` e conferência de restos
-- ⚠️ nó k3s `Ready` via túnel SSM · ⬜ `apply` em `prod` · ⬜ `apigateway:*` liberado · ⬜ `LabRole` aceita `lambda.amazonaws.com` e tem permissão de ENI
+- ✅ nó k3s `Ready` (prod) · ✅ `apply` em `prod` (40 recursos, sessão 9) · ✅ `apigateway:*` liberado · ✅ `LabRole` aceita `lambda.amazonaws.com` e tem permissão de ENI
 
 **E3 — infra do banco**
 - ✅ `fmt`/`validate`/`tflint`/`trivy` · ✅ `apply` em `hml` (RDS privado, criptografado) · ✅ 4 parâmetros SSM · ✅ `destroy`
-- ⬜ conexão a partir de um **pod** com `sslmode=require` e **recusa sem TLS** · ⬜ `apply` em `prod` (`DB_PASSWORD` de `producao` já definido)
+- ✅ conexão a partir de um **pod** com `sslmode=require` e **recusa sem TLS** (`no pg_hba.conf entry ... no encryption`) · ✅ `apply` em `prod`
 
 **E4 — app (CLIENT, ownership, correlação, métricas)**
 - ✅ `mvn verify` 429 testes + gate JaCoCo ampliado · ✅ matriz RBAC rota×papel (80 casos, validada por mutação) · ✅ CI verde · ✅ `kubectl kustomize` dos dois overlays
 - ✅ aplicação aceita um token emitido pela função E5 (`/me` → CLIENT, `/admin` → 403, adulterado → 401)
-- ⬜ `kubectl apply` em cluster · ⬜ `X-Correlation-Id` e `mdc` no **log JSON do pod** (perfil `prod`) · ⬜ `/q/metrics` no pod · ⬜ coleção Postman contra o gateway
+- ✅ `kubectl apply` em cluster · ✅ log JSON do pod com `mdc`, `env`, `service.name` e `X-Correlation-Id` ecoado · ✅ `/q/metrics` no pod (`oficina_auth_denied_total`; as demais métricas aparecem com uso) · ✅ coleção Postman contra o gateway (pastas 1, 2, 3 e 11)
 
 **E5 — função de autenticação**
 - ✅ 100 testes (unidade, contrato HTTP, **PostgreSQL real**) · ✅ papel somente-leitura recusa `INSERT`/`UPDATE`/`DELETE` e leitura de e-mail/telefone · ✅ 401 byte a byte idêntico
 - ✅ CI verde (`build-test`, `terraform-check` com `tflint`/`trivy`/`shellcheck`) · ✅ build reprodutível por Docker (JAR 3,7 MB) · ✅ PRs #1 e #2 mergeados
 - ✅ `plan` na CI chega a ler a AWS (falha só por `/oficina/hml/*` inexistente — esperado com `hml` destruída) · ✅ `apply` para no guard dos secrets sem criar nada
-- ⬜ `plan`/`apply` reais · ⬜ **SnapStart** na conta Academy e cold start < 1 s (`Restore Duration`) · ⬜ `reserved_concurrent_executions = 10` aceito (senão `-1`)
-- ⬜ smoke test do alias (400 / 401 com banco alcançado) · ⬜ nenhum CPF completo no CloudWatch · ⬜ token do Lambda aceito pela app **em execução**
+- ✅ `plan`/`apply` reais · ✅ **SnapStart** aceito e cold start < 1 s (`Restore Duration` 575 ms) · ✅ `reserved_concurrent_executions = 10` aceito
+- ✅ smoke test do alias (400 / 401 com banco alcançado) · ✅ nenhum CPF completo no CloudWatch (0 eventos) · ✅ token do Lambda aceito pela app **em execução** (fluxo do cliente)
 
 **Deploy da aplicação (oficina-app#15)**
 - ✅ `actionlint`/`shellcheck` limpos · ✅ `kubectl kustomize` dos overlays (sem Secret, imagem injetada) · ✅ no push sem infra o deploy passa verde com aviso (verificado em `homolog`)
 - ✅ **smoke test rodado de verdade** contra a app no `docker-compose` (PostgreSQL real, V5/V6 migradas, seed, filtro do gateway): 11 verificações OK; cenários negativos (chave errada, senha errada) reprovam
 - ✅ no mesmo banco, o papel `oficina_auth_ro` existe, lê e é negado em `email` e `INSERT` (premissa da E5 confirmada)
-- ⬜ imagem enviada ao ECR com tag = SHA · ⬜ `kubectl apply -k` no k3s pelo túnel SSM · ⬜ rollout, **rollback** automático · ⬜ health pelo Ingress de dentro do node
-- ⬜ Flyway (V1–V6) num **RDS real** com `sslmode=require` e `rds.force_ssl=1` (fecha o ⬜ de E1 e de E3) · ⬜ `X-Correlation-Id` e `mdc` no log JSON do **pod**
+- ✅ imagem enviada ao ECR com tag = SHA · ✅ `kubectl apply -k` no k3s pelo túnel SSM · ✅ rollout · ⬜ **rollback** automático (não exercitado) · ✅ health pelo Ingress
+- ✅ Flyway (V1–V6) num **RDS real** com `sslmode=require` e `rds.force_ssl=1` · ✅ `X-Correlation-Id` e `mdc` no log JSON do **pod**
 
 **E6 — API Gateway e authorizer (oficina-auth-lambda#3 e #4, mergeados)**
 - ✅ `terraform-check` completo no **runner** (fmt, validate, tflint, trivy, shellcheck), `build-test` (178 testes), `workflow-lint` e `plan` (sessão inativa = aviso) · ✅ `stack` pula o `apply` com aviso no merge
 - ✅ authorizer: 78 testes (alg `none`, confusão de algoritmo HS256 com a chave pública, RS384/PS256, `jwk` no header, payload adulterado, expirado, `nbf`, emissor, sem `sub`/`exp`) e gate JaCoCo
 - ✅ contrato entre as funções (token da `auth-function` aceito pelo authorizer; adulterado → `BAD_SIGNATURE`) · ✅ `terraform validate`/`tflint`/`trivy` · ✅ `actionlint`/`shellcheck`
 - ✅ CPFs gerados pelo `smoke-gateway.sh` (40/40 válidos na validação real) · ✅ build reprodutível em Docker gera os dois JARs
-- ⬜ `apigateway:*` e a política do log group na conta Academy · ⬜ SnapStart nas duas funções e cold start < 1 s · ⬜ **401 sem header, 403 com token recusado** (comportamento da AWS; a spec 03 §9 supõe 401)
-- ⬜ access log do gateway com `integrationLatency` vazio nas requisições negadas · ⬜ throttling → 429 em `POST /auth/token` · ⬜ **fluxo completo do cliente pelo gateway** (cria cliente → `/auth/token` → `/me`)
-- ⬜ `curl` direto no EIP sem `X-Gateway-Key` → 403 (manual, do seu IP) · ⬜ coleção Postman contra o gateway
+- ✅ `apigateway:*` e a política do log group na conta Academy · ✅ SnapStart nas duas funções (`Active`) e cold start < 1 s · ✅ **401 sem header, 403 com token recusado** (confirmado; a spec 03 §9 supunha 401)
+- ✅ access log do gateway com `integrationLatency` vazio nas requisições negadas · ✅ throttling → 429 em `POST /auth/token` (16 de 150 requisições; o teste original de 30 era fraco) · ✅ **fluxo completo do cliente pelo gateway**
+- ✅ `curl` direto no EIP sem `X-Gateway-Key` → 403 (token de admin válido) · ✅ coleção Postman contra o gateway
 
 **E7 — Observabilidade (código escrito; 4 PRs abertos: oficina-app#19, infra-k8s#8 e #9, auth-lambda#5)**
 - ✅ app: `quarkus-opentelemetry` (desligado por padrão), amostragem 1.0 hml / 0.2 prod, `traceId`/`spanId` no MDC (teste), senha de login falho **não** vai a nenhum log (teste), `correlationId` aceita `=` · ✅ suíte completa 431/431
 - ✅ infra-k8s: `nri-bundle` 8.0.39 renderizado com `helm template` (hml e prod), todo container com request/limit de memória; `user_data` renderizado e `bash -n`; terraform/tflint/trivy/actionlint limpos
 - ✅ `observability/` (Terraform `newrelic`): validate, 2 dashboards (11 widgets, JSON válido), 6 políticas/8 condições; ✅ log-forwarder: 7 testes `node --test`
-- ⬜ licença New Relic lida do SSM pela EC2 (LabInstanceProfile com `ssm:GetParameter`) e agentes de pé · ⬜ **`kubectl top nodes`/`top pods -A`** com folga para o HPA (hml t3.small sem prometheus-agent)
+- ✅ licença New Relic lida do SSM pela EC2 e **6 agentes `Running`** (depois de corrigir a licença: ver Decisões) · 🟡 `kubectl top` só em repouso (CPU 5%, memória 65%, `t3.medium`); **sem carga** ainda
 - ⬜ prometheus-agent coleta `/q/metrics` (anotação `newrelic.io/scrape`) · ⬜ traces OTLP chegam ao New Relic (`FROM Span`) · ⬜ **confirmar as NRQL** contra dados reais (nomes de span, `_sum`/`_count` do timer, `K8sContainerSample.reason`) e corrigir os JSON/`alerts.tf`
-- ⬜ dashboards carregados do JSON e com dados · ⬜ 6 políticas existem e **2 disparam de propósito** (derrubar pod; forçar transição inválida) · ⬜ monitor Synthetics em `/health` + alerta de disponibilidade
+- ✅ dashboards criados pelo Terraform (apply OK, após corrigir o NRQL) · ⬜ **com dados** · ⬜ 6 políticas existem e **2 disparam de propósito** (derrubar pod; forçar transição inválida) · ⬜ monitor Synthetics em `/health` + alerta de disponibilidade
 - ⬜ logs do gateway e dos Lambdas no New Relic com `correlationId` (forwarder; LabRole aceita assinatura/permissão) · ⬜ gateway repassa `X-Correlation-Id` e a app o usa · ⬜ `grep` nos logs: nenhum CPF completo nem token
 
 ## Pendências
 
 **Do usuário**
-- [x] Mergear oficina-auth-lambda#3 e #4 (feito na sessão 7)
-- [x] Mergear os PRs de docs do PROGRESSO (#16 e #17) e os de apply manual (infra-k8s#7, infra-database#2)
-- [ ] **Decidir D1–D5** e definir os secrets de **`producao`** (tabela em `docs/VALIDACAO-PROD.md` §3) e gerar **um** par JWT para os dois repos
-- [ ] Renovar as credenciais do Academy e rodar `set-aws-session-secrets.sh` no início da sessão AWS (as anteriores expiraram)
-- [ ] (Opcional) remover dois volumes Docker deixados pelo teste local do deploy: `docker volume rm oficina_postgres_data oficina_jwt_keys` — contêm só dados de teste (comandos de remoção de volume são barrados para o Claude)
-- [ ] Definir `DB_PASSWORD` no environment `producao` de `oficina-infra-database` — **feito** em 2026-10-19; os demais secrets de `producao` só quando for subir `prod`
-- [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` — pode ficar para o fim da fase
-- [ ] Apagar a pasta local `Projetos\tech-challenge-fiap` (tudo já está no GitHub; nada local pendente)
+- [ ] Conferir o encerramento da sessão 9: `destroy` na ordem (ver "Próximo passo"), varredura de órfãos vazia e saldo do Academy anotado em `docs/orcamento.md`
+- [ ] Na próxima sessão: `set-aws-session-secrets.sh`, conferir `ALLOWED_CIDR`, preencher `adminPass`/`mecanicoPass` no Postman e atualizar `gatewayUrl`/`baseUrl`
+- [ ] Adicionar `soat-architecture` na org `victor-duarte-mendonca` (D5)
 - [ ] **Depois da gravação do vídeo: reverter o seed de `prod`** (`k8s/overlays/prod/kustomization.yaml` → `APP_SEED_ENABLED: "false"`), via PR
+- [ ] Documento PDF e vídeo (até 15 min)
+- [ ] (Opcional) apagar a pasta local `Projetos\tech-challenge-fiap` e os volumes Docker `oficina_postgres_data`/`oficina_jwt_keys`
 
-**Do Claude (sem AWS)**
-- [x] Religar a base do #4 para `homolog` com rebase (feito)
-- [x] Disparo manual de `apply` em `oficina-infra-k8s` e `oficina-infra-database` (feito na sessão 8: infra-k8s#7, infra-database#2); `plan` em PR agora ignora sessão expirada
-- [x] Código da E7 escrito (4 PRs abertos); validar só na sessão AWS
-- [x] E8 (17 ADRs, 3 RFCs, diagramas) e E9 (runbook, orçamento, roteiro de validação em produção, `k3s-exec.sh`) escritos; PRs abertos
-- [ ] Depois do merge: conferir que os links `blob/main` dos READMEs resolvem após promover `oficina-app` para `main`, e preencher `docs/orcamento.md` na sessão
-- [ ] (Decisão do usuário) o HTTP API não propaga W3C: aceitar que o trace começa na aplicação, ou avaliar X-Ray no gateway (fora do escopo da spec)
-- [ ] (Decisão do usuário) filtro do gateway no Vert.x, para o 403 valer também para anônimos — hoje anônimo recebe 401 (ver "Decisões")
-
-**Validações de primeira sessão AWS** (spec 00 §6, spec 03 §8) — fazer na sessão consolidada:
-- [ ] `apigateway:*` liberado na conta Academy e política de log group para o access log do HTTP API
-- [ ] `LabRole` com trust policy para `lambda.amazonaws.com` e permissão de ENI na VPC
+**Do Claude**
+- [ ] Sincronizar `main` → `homolog` nos 4 repos (ver "Dívida de sincronização") e abrir os PRs de melhoria (MAILER vazio, startup probe, smoke esperar alias `Active`)
+- [ ] Conduzir a lista "Primeira coisa da próxima sessão" (New Relic, HPA, correlação ponta a ponta, rollback, Postman Run) e atualizar `docs/orcamento.md`
+- [ ] Depois da sessão: conferir que os links `blob/main` dos READMEs resolvem (`oficina-app` já está em `main`)
+- [ ] (Decisão do usuário) o HTTP API não propaga W3C (trace começa na app) e anônimo recebe 401: aceitos (D3, D4)
 
 ## Estado atual dos repositórios (fim da sessão 8)
 
@@ -201,6 +220,14 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 - **E7 — dashboards/alertas em Terraform `newrelic`** numa raiz separada (`oficina-infra-k8s/observability/`, state `oficina/observability/<ws>`), com workflow próprio que **ignora o apply sem sessão AWS ou sem secrets** (`NEW_RELIC_API_KEY`, `NEW_RELIC_ACCOUNT_ID`, `ALERT_EMAIL`). NR só tem critical/warning: a severidade da spec vai no nome da política.
 - **E7 — forwarder de logs próprio** (Node 20, fora da VPC) em vez do `newrelic-log-ingestion` do SAR (cria IAM role, bloqueado no Academy). Liga sozinho quando existe `/oficina/<env>/newrelic_license_key`. `service.name` mantido `oficina-mecanica` (nome atual), não `oficina-app` da spec.
 
+- **Sessão 9 — promoção por branch `promote/homolog-to-main` com `git merge -s ours origin/main`** em `infra-k8s`, `app` e (sem necessidade) `auth-lambda`: a árvore é idêntica à da `homolog` e o PR para `main` não conflita (o squash das fases anteriores divergiu as histórias). `infra-database` e `auth-lambda` tinham merge limpo.
+- **Sessão 9 — correções direto em `main`** (`infra-k8s#12`, `auth-lambda#8/#9/#10/#11`): um push em `homolog` de `infra-k8s`/`infra-database` dispara o `apply` de `hml`, que com sessão ativa criaria infra fora do roteiro. Dívida de sincronização registrada em "Próximo passo".
+- **Sessão 9 — `NEW_RELIC_LICENSE_KEY` inválida de início:** o ícone de copiar da tela de API keys do New Relic copiava o valor **mascarado** (`a612c84c********`, 16 caracteres). Os agentes ficaram em `CrashLoopBackOff` (`invalid license`) e a User key deu 401. Corrigido regravando com o valor completo (64 caracteres), `terraform apply` (atualiza o parâmetro SSM) e recriação do Secret do cluster a partir do SSM com `k3s-exec.sh`; o k3s também lê o arquivo de manifesto em `/var/lib/rancher/k3s/server/manifests/newrelic-license.yaml`, atualizado junto. Só vale para instância já criada.
+- **Sessão 9 — secrets gravados com `$valor | gh secret set` no PowerShell 5.1 levam CR/LF no fim** (o pipe acrescenta a quebra de linha) e o PowerShell remove aspas duplas de argumentos para `.exe`. Padrão adotado: `gh secret set NOME --body "$valor"` e scripts bash via **Git Bash** (o `bash` do PATH do PowerShell é o do WSL).
+- **Sessão 9 — `MAILER_HOST` vazio derruba a app:** o `deploy.yml` cria `MAILER_HOST=""` quando o secret não existe; o Quarkus trata string vazia como nula e recusa subir (`SRCFG00040`). Contornado com o secret `MAILER_HOST=localhost`; correção definitiva em "Melhorias de código".
+- **Sessão 9 — `plan` do `auth-lambda` com sessão ativa nunca tinha rodado:** o `data.tls_public_key` interpreta a chave já no plan e o placeholder de texto falhava (`Unable to parse private key`). O job passou a gerar uma chave RSA descartável.
+- **Sessão 9 — NRQL:** `FACET from, to` é inválido (palavras reservadas); precisa de crases. Só apareceu no `apply` do Observability.
+
 ## Lições operacionais
 
 - Ler logs de CI com `gh run view <id> --log-failed` em vez de pedir print.
@@ -219,6 +246,12 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 - `jq` não existe no Git Bash local (existe nos runners): validar scripts com um shim em Node fora do repositório. `java -cp` no Windows separa com `;`. Snippets Java curtos: `printf` + arquivo.
 - Num HTTP API, ausência de `Authorization` = 401 e `isAuthorized=false` = 403; filtros JAX-RS rodam depois da checagem de `@RolesAllowed` no RESTEasy Reactive: **testar com requisição sem token**, não só com token.
 - Workflows de infra que só aplicam em `push` não têm como subir um ambiente destruído sem re-executar um run antigo: dar a todo pipeline de infra um `workflow_dispatch` de apply.
+- **A CLI da AWS pagina** `filter-log-events`: `--query 'length(events)'` e `--query 'events[0].message'` imprimem **um valor por página** (`0`/`0`, `None`). Somar com `awk` ou ficar com a primeira mensagem real; dois smokes falharam por isso mesmo sem haver problema.
+- **SnapStart:** a primeira invocação logo depois do `apply` dá `ResourceConflictException` (`Pending`); esperar `Active`.
+- **Git Bash em Windows:** `MSYS_NO_PATHCONV=1` para caminhos do SSM (`/oficina/...`); `kubectl run -i` por SSM trava (sem stdin): usar `--restart=Never` sem `-i`, esperar a fase e ler `logs`. Comandos que escrevem no node ou disparam deploy de produção são bloqueados para o Claude: o usuário executa.
+- **Throttling do HTTP API é por token bucket:** 30 requisições (com handshake TLS espalhando as chegadas) não estouram 10 req/s + burst 20; 150 com 50 em paralelo sim.
+- **Postman:** o Runner usa cópia temporária das variáveis (marcar *Persist variables*); herança de auth de coleção pode não vir no import (auth explícito nas requisições); variáveis de Environment de outro projeto ativo sobrescrevem as da coleção.
+- **Valores copiados de telas com máscara** (New Relic) devem ser medidos antes de gravar: `(Get-Clipboard).Length`, sem asterisco, prefixo esperado.
 
 ## Como saber se a AWS "deu certo" (sessão consolidada)
 
@@ -315,3 +348,4 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 - **2026-10-28 (sessão 8, continuação)** — **E7 escrita sem AWS** em 4 PRs. `oficina-app#19`: `quarkus-opentelemetry` (desligado por padrão; liga com `NEW_RELIC_LICENSE_KEY` no Secret), amostragem por ambiente, testes de `traceId`/`spanId` no MDC e de vazamento de senha, anotação `newrelic.io/scrape`, `correlationId` aceita `=`; 431/431. `oficina-infra-k8s#8`: `nri-bundle` 8.0.39 via HelmChart do k3s com licença no SSM (chart renderizado com `helm template`; achado do `integrations_filter`). `oficina-infra-k8s#9`: `observability/` (provider `newrelic`: 2 dashboards, 6 políticas/8 condições, Synthetics) com workflow que ignora sem sessão/secrets. `oficina-auth-lambda#5`: forwarder de logs (Node, 7 testes) e `X-Correlation-Id` no gateway. Lição: heredoc grande com aspas quebrou o shell de novo (usar Write); `perl -0` em arquivo com `$` no replacement pediu cuidado.
 - **2026-10-28 (sessão 8, fechamento)** — **E8 e E9 escritas sem AWS.** `oficina-app/docs/`: 17 ADRs (`adr/`) e 3 RFCs (`rfc/`) a partir das specs e do que foi implementado (ADR 0010/0011 descrevem os desvios: só os traces são OTLP; SSM passou a conter a licença New Relic), `arquitetura.md` (componentes com a fronteira da VPC, sequência de autenticação e de abertura/aprovação de OS), `erd.md` ligado à RFC 0002, `RUNBOOK.md` (substitui o `SESSION-GUIDE.md` da Fase 2), `orcamento.md` (medições a preencher) e `VALIDACAO-PROD.md`; `scripts/k3s-exec.sh` (kubectl por SSM Run Command). Seção Documentação nos READMEs dos outros 3 repos (auth-lambda#6, infra-k8s#10, infra-database#3). **Achados ao documentar a validação em produção:** (1) `prod` tem seed desligado, então smoke test da app e fluxo do cliente do `smoke-gateway.sh` ficam pulados (decisão D1); (2) o throttling do gateway (50 rps) impede gerar carga de HPA pela URL do gateway: usar o EIP; (3) merge em `main` dispara o deploy de prod, e o `apply` dos repos de infra não ignora sessão expirada: promover só durante a sessão; (4) squash diverge `homolog` e `main`: PR de sincronização. Correção no diagrama: transição inválida responde 422 (não 409).
 - **2026-10-28 (sessão 8, encerramento)** — Decisão D1: seed ligado em `prod` (`oficina-app#22`, **deixado aberto de propósito até a sessão em produção**: o merge em `main` publica em produção). Combinado: a **próxima sessão começa levantando tudo que está pendente** (protocolo em "Próximo passo") e segue para a validação em produção. Estado ao encerrar: 4 repos em `homolog` sem PR aberto além do #22; E0–E9 escritas; nada na AWS.
+- **2026-10-29 (sessão 9)** — **Validação em produção.** `oficina-infra-k8s#11` (promoção) → apply de `prod` (40 recursos); `infra-database#4` → RDS; `oficina-app#24` → deploy (falhou duas vezes: `MAILER_HOST` vazio e startup probe justo; contornado); `oficina-auth-lambda#8` (promoção com correção do `plan`) → Lambdas e API Gateway, smokes corrigidos em #9, #10 e #11; `infra-k8s#12` (NRQL). Validado: Flyway V1–V6 num RDS real com TLS obrigatório, SnapStart (575 ms), authorizer, 401/403/429, fluxo completo do cliente, 403 direto no EIP, Postman (pastas 1, 2, 3, 11), log JSON e métricas do pod, agentes New Relic de pé. **Não validado:** dados no New Relic (dashboards, alertas, Synthetics, logs), HPA sob carga, correlação gateway→app, rollback. Usuário destruiu o ambiente no fim do Lab. Lições e decisões acima; pendências em "Próximo passo".
