@@ -1,0 +1,2235 @@
+{
+  "openapi" : "3.0.3",
+  "info" : {
+    "title" : "Oficina Mecânica API",
+    "description" : "Sistema Integrado de Atendimento e Execução de Serviços - MVP Fase 1",
+    "contact" : {
+      "name" : "Equipe SOAT"
+    },
+    "version" : "1.0.0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost:8080",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:8080",
+    "description" : "Auto generated value"
+  } ],
+  "tags" : [ {
+    "name" : "Acompanhamento Público",
+    "description" : "Endpoint público para clientes acompanharem o status da OS"
+  }, {
+    "name" : "Autenticação",
+    "description" : "Endpoints de autenticação e geração de tokens JWT"
+  }, {
+    "name" : "Catálogo de Serviços",
+    "description" : "Gestão do catálogo de serviços da oficina"
+  }, {
+    "name" : "Clientes",
+    "description" : "Gestão de clientes"
+  }, {
+    "name" : "Métricas",
+    "description" : "Monitoramento e métricas operacionais da oficina"
+  }, {
+    "name" : "Ordens de Serviço",
+    "description" : "Gestão completa de Ordens de Serviço"
+  }, {
+    "name" : "Peças e Insumos",
+    "description" : "Gestão de peças e insumos com controle de estoque"
+  }, {
+    "name" : "Veículos",
+    "description" : "Gestão de veículos"
+  }, {
+    "name" : "Área do cliente",
+    "description" : "Rotas do cliente autenticado por CPF"
+  } ],
+  "paths" : {
+    "/admin/clients" : {
+      "get" : {
+        "tags" : [ "Clientes" ],
+        "summary" : "Listar clientes (paginado)",
+        "description" : "Total de registros, ignorando a paginação, no cabeçalho X-Total-Count.",
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 0,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 20,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Clientes" ],
+        "summary" : "Cadastrar novo cliente",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ClientRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/clients/cpfcnpj/{cpfCnpj}" : {
+      "get" : {
+        "tags" : [ "Clientes" ],
+        "summary" : "Buscar cliente por CPF/CNPJ",
+        "parameters" : [ {
+          "name" : "cpfCnpj",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/clients/{id}" : {
+      "get" : {
+        "tags" : [ "Clientes" ],
+        "summary" : "Buscar cliente por ID",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "Clientes" ],
+        "summary" : "Atualizar cliente",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ClientRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Clientes" ],
+        "summary" : "Excluir cliente",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/metrics" : {
+      "get" : {
+        "tags" : [ "Métricas" ],
+        "summary" : "Obter métricas da oficina",
+        "description" : "Retorna métricas como total de OS, tempo médio de execução, receita total e estoque crítico",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MetricsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/parts" : {
+      "get" : {
+        "tags" : [ "Peças e Insumos" ],
+        "summary" : "Listar peças/insumos ativos (paginado)",
+        "description" : "Total de registros, ignorando a paginação, no cabeçalho X-Total-Count.",
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 0,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 20,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Peças e Insumos" ],
+        "summary" : "Cadastrar nova peça/insumo",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PartRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/parts/low-stock" : {
+      "get" : {
+        "tags" : [ "Peças e Insumos" ],
+        "summary" : "Listar itens com estoque igual ou abaixo do mínimo de cada peça",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PartResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/parts/{id}" : {
+      "get" : {
+        "tags" : [ "Peças e Insumos" ],
+        "summary" : "Buscar peça/insumo por ID",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "Peças e Insumos" ],
+        "summary" : "Atualizar peça/insumo",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PartRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Peças e Insumos" ],
+        "summary" : "Excluir peça/insumo (exclusão lógica) — somente ADMIN",
+        "description" : "Soft-delete: a peça é desativada (não removida fisicamente), pois pode estar referenciada por OS históricas. Deixa de aparecer no catálogo e nos alertas de reposição.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/parts/{id}/reactivate" : {
+      "patch" : {
+        "tags" : [ "Peças e Insumos" ],
+        "summary" : "Reativar peça/insumo — somente ADMIN",
+        "description" : "Reverte o soft-delete, devolvendo a peça ao catálogo e aos alertas de reposição.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/parts/{id}/stock" : {
+      "patch" : {
+        "tags" : [ "Peças e Insumos" ],
+        "summary" : "Ajustar estoque (positivo=entrada, negativo=saída) — somente ADMIN",
+        "description" : "Operação restrita a ADMIN. Mecânicos consomem estoque indiretamente ao adicionar peças à OS; ajustes manuais de entrada/saída (compra, devolução, perda) são responsabilidade administrativa.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "adjustment",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/services" : {
+      "get" : {
+        "tags" : [ "Catálogo de Serviços" ],
+        "summary" : "Listar todos os serviços",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ServiceItemResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Catálogo de Serviços" ],
+        "summary" : "Cadastrar novo serviço",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ServiceItemRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/services/active" : {
+      "get" : {
+        "tags" : [ "Catálogo de Serviços" ],
+        "summary" : "Listar serviços ativos",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ServiceItemResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/services/{id}" : {
+      "get" : {
+        "tags" : [ "Catálogo de Serviços" ],
+        "summary" : "Buscar serviço por ID",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceItemResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "Catálogo de Serviços" ],
+        "summary" : "Atualizar serviço",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ServiceItemRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceItemResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Catálogo de Serviços" ],
+        "summary" : "Excluir serviço",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/services/{id}/deactivate" : {
+      "patch" : {
+        "tags" : [ "Catálogo de Serviços" ],
+        "summary" : "Desativar serviço",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceItemResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/vehicles" : {
+      "get" : {
+        "tags" : [ "Veículos" ],
+        "summary" : "Listar veículos (paginado)",
+        "description" : "Total de registros, ignorando a paginação, no cabeçalho X-Total-Count.",
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 0,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 20,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Veículos" ],
+        "summary" : "Cadastrar novo veículo",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VehicleRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/vehicles/client/{clientId}" : {
+      "get" : {
+        "tags" : [ "Veículos" ],
+        "summary" : "Listar veículos por cliente",
+        "parameters" : [ {
+          "name" : "clientId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/VehicleResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/vehicles/{id}" : {
+      "get" : {
+        "tags" : [ "Veículos" ],
+        "summary" : "Buscar veículo por ID",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VehicleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "Veículos" ],
+        "summary" : "Atualizar veículo",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VehicleRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VehicleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Veículos" ],
+        "summary" : "Excluir veículo",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders" : {
+      "get" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Listar OS (paginado; filtro opcional por status)",
+        "description" : "Sem filtro, retorna apenas as OS ativas — exclui logicamente os estados terminais (FINISHED/DELIVERED/CANCELLED) —, ordenadas por prioridade de status (Execução > Aguardando Aprovação > Diagnóstico > Recebida) e, dentro do mesmo status, das mais antigas para as mais recentes. Use o parâmetro status= para consultar OS encerradas. O total de registros (ignorando a paginação) vem no cabeçalho X-Total-Count.",
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 0,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 20,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "$ref" : "#/components/schemas/WorkOrderStatus"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Criar nova OS",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WorkOrderCreateDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/number/{orderNumber}" : {
+      "get" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Buscar OS por número",
+        "parameters" : [ {
+          "name" : "orderNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}" : {
+      "get" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Buscar OS por ID",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/approve" : {
+      "patch" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Registrar aprovação presencial do cliente (AWAITING_APPROVAL → IN_EXECUTION)",
+        "description" : "Endpoint administrativo destinado ao atendente registrar uma aprovação feita pelo cliente PRESENCIALMENTE ou por telefone. Para aprovação remota pelo próprio cliente, usar POST /public/work-orders/{orderNumber}/approve.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/cancel" : {
+      "patch" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Cancelar OS (somente ADMIN)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/complete" : {
+      "patch" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Marcar OS como concluída (IN_EXECUTION → FINISHED)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/deliver" : {
+      "patch" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Registrar entrega do veículo (FINISHED → DELIVERED)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/parts" : {
+      "post" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Adicionar peça à OS",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WorkOrderPartDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/parts/{partLineId}" : {
+      "delete" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Remover peça da OS",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "partLineId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/reject" : {
+      "patch" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Registrar rejeição presencial do cliente (AWAITING_APPROVAL → CANCELLED)",
+        "description" : "Endpoint administrativo destinado ao atendente registrar uma rejeição feita pelo cliente PRESENCIALMENTE ou por telefone. Para rejeição remota pelo próprio cliente, usar POST /public/work-orders/{orderNumber}/reject.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/send-for-approval" : {
+      "patch" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Enviar orçamento para aprovação (IN_DIAGNOSIS → AWAITING_APPROVAL)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/services" : {
+      "post" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Adicionar serviço à OS",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WorkOrderServiceDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/services/{serviceLineId}" : {
+      "delete" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Remover serviço da OS",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "serviceLineId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/admin/work-orders/{id}/start-diagnosis" : {
+      "patch" : {
+        "tags" : [ "Ordens de Serviço" ],
+        "summary" : "Iniciar diagnóstico (RECEIVED → IN_DIAGNOSIS)",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/auth/login" : {
+      "post" : {
+        "tags" : [ "Autenticação" ],
+        "summary" : "Realizar login",
+        "description" : "Autentica o usuário e retorna um token JWT",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
+    "/me" : {
+      "get" : {
+        "tags" : [ "Área do cliente" ],
+        "summary" : "Dados do próprio cadastro",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/me/vehicles" : {
+      "get" : {
+        "tags" : [ "Área do cliente" ],
+        "summary" : "Veículos do cliente",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/VehicleResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/me/work-orders" : {
+      "get" : {
+        "tags" : [ "Área do cliente" ],
+        "summary" : "OS do cliente (paginado, da mais recente à mais antiga)",
+        "description" : "Inclui as encerradas. Total, ignorando a paginação, no cabeçalho X-Total-Count.",
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 0,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 20,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Área do cliente" ],
+        "summary" : "Abrir OS para um veículo do próprio cliente",
+        "description" : "O veículo precisa pertencer ao cliente autenticado (404 caso contrário).",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ClientWorkOrderRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/me/work-orders/{id}" : {
+      "get" : {
+        "tags" : [ "Área do cliente" ],
+        "summary" : "Detalhe de uma OS do cliente",
+        "description" : "404 (e não 403) se a OS pertencer a outro cliente, para não revelar que o id existe.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/me/work-orders/{id}/approval" : {
+      "post" : {
+        "tags" : [ "Área do cliente" ],
+        "summary" : "Aprovar ou recusar o orçamento da própria OS",
+        "description" : "Só vale em AWAITING_APPROVAL. Corpo: {\"decision\": \"APPROVE\" | \"REJECT\"}.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApprovalDecisionDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/public/work-orders/{orderNumber}/approve" : {
+      "post" : {
+        "tags" : [ "Acompanhamento Público" ],
+        "summary" : "Aprovar orçamento",
+        "description" : "Cliente aprova o orçamento e autoriza execução (AWAITING_APPROVAL → IN_EXECUTION). Exige, no corpo, o CPF/CNPJ do cliente da OS e o código de autorização de uso único enviado por e-mail no momento do envio do orçamento. O código expira ao ser usado; um reenvio do orçamento gera um novo e invalida o anterior.",
+        "parameters" : [ {
+          "name" : "orderNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublicApprovalRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicWorkOrderDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/work-orders/{orderNumber}/reject" : {
+      "post" : {
+        "tags" : [ "Acompanhamento Público" ],
+        "summary" : "Rejeitar orçamento",
+        "description" : "Cliente rejeita o orçamento (AWAITING_APPROVAL → CANCELLED). Exige, no corpo, o CPF/CNPJ do cliente da OS e o código de autorização de uso único enviado por e-mail no momento do envio do orçamento.",
+        "parameters" : [ {
+          "name" : "orderNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublicApprovalRequestDto"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicWorkOrderDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/work-orders/{orderNumber}/status" : {
+      "get" : {
+        "tags" : [ "Acompanhamento Público" ],
+        "summary" : "Consultar status da OS",
+        "description" : "Permite ao cliente consultar o status de sua Ordem de Serviço pelo número. Retorna apenas número, status e marcos temporais — não expõe dados pessoais, placa, orçamento ou itens (evita vazamento por enumeração do número da OS).",
+        "parameters" : [ {
+          "name" : "orderNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicWorkOrderStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "ApprovalDecisionDto" : {
+        "required" : [ "decision" ],
+        "type" : "object",
+        "properties" : {
+          "decision" : {
+            "$ref" : "#/components/schemas/Decision"
+          }
+        }
+      },
+      "ClientRequestDto" : {
+        "required" : [ "name", "cpfCnpj", "clientType" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 150,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "cpfCnpj" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "clientType" : {
+            "$ref" : "#/components/schemas/ClientType"
+          },
+          "email" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "phone" : {
+            "maxLength" : 20,
+            "type" : "string"
+          }
+        }
+      },
+      "ClientResponseDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "cpfCnpj" : {
+            "type" : "string"
+          },
+          "clientType" : {
+            "$ref" : "#/components/schemas/ClientType"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "ClientType" : {
+        "enum" : [ "PF", "PJ" ],
+        "type" : "string"
+      },
+      "ClientWorkOrderRequestDto" : {
+        "required" : [ "vehicleId" ],
+        "type" : "object",
+        "properties" : {
+          "vehicleId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "notes" : {
+            "maxLength" : 500,
+            "type" : "string"
+          }
+        }
+      },
+      "Decision" : {
+        "enum" : [ "APPROVE", "REJECT" ],
+        "type" : "string"
+      },
+      "LoginRequestDto" : {
+        "required" : [ "username", "password" ],
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "password" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "MetricsResponseDto" : {
+        "type" : "object",
+        "properties" : {
+          "totalWorkOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "openWorkOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "finishedWorkOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "cancelledWorkOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "averageExecutionTimeMinutes" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "totalRevenue" : {
+            "type" : "number"
+          },
+          "lowStockParts" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }
+      },
+      "OffsetDateTime" : {
+        "format" : "date-time",
+        "type" : "string",
+        "example" : "2022-03-10T12:15:50-04:00"
+      },
+      "PartRequestDto" : {
+        "required" : [ "name", "unitPrice", "stockQuantity", "unit" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "description" : {
+            "maxLength" : 255,
+            "type" : "string"
+          },
+          "unitPrice" : {
+            "minimum" : 0.01,
+            "pattern" : "^\\d{1,8}([.]\\d{1,2})?$",
+            "type" : "number"
+          },
+          "stockQuantity" : {
+            "format" : "int32",
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "unit" : {
+            "maxLength" : 10,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "minimumStock" : {
+            "format" : "int32",
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "partType" : {
+            "$ref" : "#/components/schemas/PartType"
+          }
+        }
+      },
+      "PartResponseDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "unitPrice" : {
+            "type" : "number"
+          },
+          "stockQuantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "unit" : {
+            "type" : "string"
+          },
+          "minimumStock" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partType" : {
+            "$ref" : "#/components/schemas/PartType"
+          },
+          "lowStock" : {
+            "type" : "boolean"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "PartType" : {
+        "enum" : [ "PECA", "INSUMO" ],
+        "type" : "string"
+      },
+      "PublicApprovalRequestDto" : {
+        "required" : [ "clientCpfCnpj", "approvalToken" ],
+        "type" : "object",
+        "properties" : {
+          "clientCpfCnpj" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "approvalToken" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "PublicWorkOrderDto" : {
+        "type" : "object",
+        "properties" : {
+          "orderNumber" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/WorkOrderStatus"
+          },
+          "vehicleLicensePlate" : {
+            "type" : "string"
+          },
+          "vehicleBrand" : {
+            "type" : "string"
+          },
+          "vehicleModel" : {
+            "type" : "string"
+          },
+          "totalCost" : {
+            "type" : "number"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "sentForApprovalAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "approvedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "finishedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "deliveredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "serviceNames" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "partNames" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "PublicWorkOrderStatusDto" : {
+        "type" : "object",
+        "properties" : {
+          "orderNumber" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/WorkOrderStatus"
+          },
+          "statusLabel" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "sentForApprovalAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "approvedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "finishedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "deliveredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "ServiceItemRequestDto" : {
+        "required" : [ "name", "basePrice", "estimatedDurationMinutes" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "description" : {
+            "maxLength" : 255,
+            "type" : "string"
+          },
+          "basePrice" : {
+            "minimum" : 0.01,
+            "pattern" : "^\\d{1,8}([.]\\d{1,2})?$",
+            "type" : "number"
+          },
+          "estimatedDurationMinutes" : {
+            "format" : "int32",
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }
+      },
+      "ServiceItemResponseDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "basePrice" : {
+            "type" : "number"
+          },
+          "estimatedDurationMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "VehicleRequestDto" : {
+        "required" : [ "licensePlate", "brand", "model", "productionYear", "clientId" ],
+        "type" : "object",
+        "properties" : {
+          "licensePlate" : {
+            "maxLength" : 10,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "brand" : {
+            "maxLength" : 50,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "model" : {
+            "maxLength" : 80,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "productionYear" : {
+            "format" : "int32",
+            "maximum" : 2100,
+            "minimum" : 1886,
+            "type" : "integer"
+          },
+          "clientId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }
+      },
+      "VehicleResponseDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "licensePlate" : {
+            "type" : "string"
+          },
+          "brand" : {
+            "type" : "string"
+          },
+          "model" : {
+            "type" : "string"
+          },
+          "productionYear" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "clientId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "clientName" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          }
+        }
+      },
+      "WorkOrderCreateDto" : {
+        "required" : [ "clientCpfCnpj", "vehicleId" ],
+        "type" : "object",
+        "properties" : {
+          "clientCpfCnpj" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "vehicleId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "notes" : {
+            "maxLength" : 500,
+            "type" : "string"
+          },
+          "services" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WorkOrderServiceDto"
+            }
+          },
+          "parts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WorkOrderPartDto"
+            }
+          }
+        }
+      },
+      "WorkOrderPartDto" : {
+        "required" : [ "partId", "quantity" ],
+        "type" : "object",
+        "properties" : {
+          "partId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }
+      },
+      "WorkOrderPartSummaryDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "unitPrice" : {
+            "type" : "number"
+          },
+          "subtotal" : {
+            "type" : "number"
+          }
+        }
+      },
+      "WorkOrderResponseDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderNumber" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/WorkOrderStatus"
+          },
+          "clientName" : {
+            "type" : "string"
+          },
+          "clientCpfCnpj" : {
+            "type" : "string"
+          },
+          "vehicleLicensePlate" : {
+            "type" : "string"
+          },
+          "vehicleBrand" : {
+            "type" : "string"
+          },
+          "vehicleModel" : {
+            "type" : "string"
+          },
+          "vehicleYear" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "totalCost" : {
+            "type" : "number"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "diagnosisStartedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "sentForApprovalAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "approvedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "executionStartedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "finishedAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "deliveredAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "cancelledAt" : {
+            "$ref" : "#/components/schemas/OffsetDateTime"
+          },
+          "parts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WorkOrderPartSummaryDto"
+            }
+          },
+          "services" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WorkOrderServiceSummaryDto"
+            }
+          }
+        }
+      },
+      "WorkOrderServiceDto" : {
+        "required" : [ "serviceItemId" ],
+        "type" : "object",
+        "properties" : {
+          "serviceItemId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "notes" : {
+            "maxLength" : 255,
+            "type" : "string"
+          }
+        }
+      },
+      "WorkOrderServiceSummaryDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "serviceName" : {
+            "type" : "string"
+          },
+          "price" : {
+            "type" : "number"
+          },
+          "notes" : {
+            "type" : "string"
+          }
+        }
+      },
+      "WorkOrderStatus" : {
+        "enum" : [ "RECEIVED", "IN_DIAGNOSIS", "AWAITING_APPROVAL", "IN_EXECUTION", "FINISHED", "DELIVERED", "CANCELLED" ],
+        "type" : "string"
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "JWT Bearer Token — use POST /auth/login para obter o token",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      },
+      "SecurityScheme" : {
+        "type" : "http",
+        "description" : "Authentication",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  }
+}
