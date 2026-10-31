@@ -1,7 +1,7 @@
 # Progresso da Fase 3
 
 > Fonte única do estado do projeto. Ler no início da sessão; atualizar ao final.
-> Última atualização: **2026-10-29** (sessão 9 — **validação em produção executada**; ver "Primeira coisa da próxima sessão").
+> Última atualização: **2026-10-31** (sessão 10 — sem AWS: sync main→homolog, melhorias de deploy e fechamento das lacunas de documentação do PDF; Lab ainda não disponível).
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
@@ -48,27 +48,21 @@ conferir `ALLOWED_CIDR` contra o IP atual (`curl -s https://checkip.amazonaws.co
 6. **E0:** acesso do `soat-architecture` aos 4 repositórios (D5, convite na org).
 7. **`docs/orcamento.md`:** saldo do Academy antes/depois e tempos medidos (subida ≈ 20-25 min). Não foi preenchido.
 
-### Dívida de sincronização `main` → `homolog` (fazer ANTES de qualquer feature nova)
+### Sincronização `main` → `homolog` e melhorias de código — FEITO na sessão 10 (2026-10-31, sem AWS)
 
-Os PRs de promoção usaram a branch `promote/homolog-to-main` (merge `-s ours`, árvore idêntica à `homolog`) para contornar o conflito de squash, e **quatro correções foram direto para `main`** (exceção ao fluxo, porque um push em
-`homolog` de `oficina-infra-k8s`/`oficina-infra-database` dispara o `apply` de `hml`). `homolog` não tem essas correções:
+- Sync `main` → `homolog`: `oficina-auth-lambda#12` e `oficina-infra-k8s#13` (merge `-s ours`). `oficina-app` e `oficina-infra-database` não precisaram (sem diferença de árvore; um `-s ours` na app teria apagado o PROGRESSO e as coleções Postman de `homolog`).
+  Os `apply` de hml disparados pelo merge falharam com `The security token included in the request is expired` (esperado, Lab desligado, nada criado).
+- `oficina-app#26`: `deploy.yml` só cria `MAILER_*` quando o secret está preenchido (o secret `MAILER_HOST=localhost` de `producao` deixa de ser necessário) e `startupProbe` com `failureThreshold: 40` (120 s).
+  **Não exercitado em AWS**: validar no próximo deploy (hml e prod).
+- `oficina-auth-lambda#14`: `smoke-test.sh` espera o alias `Active` (`aws lambda wait function-active-v2`). Só `bash -n`; **validar no próximo `apply`**.
+- **Continua pendente:** reverter o seed de `prod` (`k8s/overlays/prod/kustomization.yaml` → `APP_SEED_ENABLED: "false"`) depois da gravação do vídeo.
+- **Atenção ao promover `homolog` → `main`:** os PRs #26/#27 e os READMEs só estão em `homolog`; os links `blob/main` dos READMEs só resolvem depois da promoção. Um merge em `main` de `infra-*`/`app` dispara `apply`/deploy de **prod**: promover só com sessão AWS ativa.
 
-| Repo | Só em `main` (falta em `homolog`) |
-|---|---|
-| `oficina-infra-k8s` | #12: crases em `` `from`, `to` `` (palavras reservadas do NRQL) em `observability/dashboards/negocio.json.tftpl` |
-| `oficina-auth-lambda` | #8: `plan` com chave RSA descartável (o `data.tls_public_key` não aceita placeholder) · #9, #10, #11: `smoke-test.sh`/`smoke-gateway.sh` (paginação da CLI e rajada de 150 req. no throttling) |
-| `oficina-app`, `oficina-infra-database` | só os merges de promoção (#24, #4), sem diferença de árvore |
+### Revisão dos requisitos do PDF (sessão 10)
 
-**Como sincronizar:** branch a partir de `main`, `git merge -s ours origin/homolog`, PR para `homolog` (a árvore resultante é a da `main`). **Atenção:** um push em `homolog` de `infra-k8s`/`infra-database` dispara o `apply`
-de `hml`: sem sessão AWS ativa ele falha (vermelho, inofensivo); **com sessão ativa, cria infra de hml**. Faça o sync sem sessão ativa ou cancele o run.
-
-### Melhorias de código a fazer (PRs `feature/x` → `homolog` → `main`)
-
-- `oficina-app/.github/workflows/deploy.yml`: **não criar** as chaves `MAILER_*` quando o secret estiver vazio. Hoje `--from-literal=MAILER_HOST=""` vence o padrão `${MAILER_HOST:localhost}` do `application.properties` e o
-  Quarkus recusa subir (`SRCFG00040`). **Contornado** com o secret `MAILER_HOST=localhost` em `producao`; o bug continua latente em `hml`.
-- `oficina-app/k8s/base/deployment.yaml`: **startup probe** de 60 s (20 × 3 s) é justa: dois pods subindo juntos no `t3.medium` com o New Relic mataram dois reinícios. Subir `failureThreshold` (ex.: 40) ou dar mais CPU de request.
-- `oficina-auth-lambda/scripts/smoke-test.sh`: esperar o alias ficar `Active` (`aws lambda wait function-active-v2`) antes de invocar; com SnapStart a primeira invocação logo após o `apply` dá `ResourceConflictException` (`Pending`).
-- Reverter o seed de `prod`: `k8s/overlays/prod/kustomization.yaml` → `APP_SEED_ENABLED: "false"` (depois da gravação do vídeo).
+Matriz completa conferida contra `13SOAT - Fase 3 - Tech Challenge.pdf`. Atendidos: API Gateway + Lambda de CPF/JWT, 4 repos com CI/CD e rulesets, deploy por push (com aprovação do Environment `producao`), dashboards (volume diário de OS, tempo médio por status, erros de integração), alertas de falha de OS, logs JSON com `correlationId`, diagramas de componentes e sequência, 3 RFCs, 17 ADRs, ERD.
+Lacunas de documentação fechadas em `oficina-app#27` e `oficina-auth-lambda#13`/`oficina-infra-k8s#14`/`oficina-infra-database#5`: OpenAPI exportado (`docs/api/openapi.{yaml,json}`), links Postman nos 4 READMEs, nota de que o deploy é efêmero (URL muda por sessão), vídeo da Fase 2 rotulado como histórico.
+**Falta (não é código):** link do vídeo da Fase 3 no README da app (marcador "a ser inserido"), convite `soat-architecture` nos 4 repos, PDF único de entrega, e a validação ao vivo (New Relic com dados, logs e traces, HPA) que o vídeo exige.
 
 ### Postman (opção Run)
 
@@ -157,9 +151,9 @@ Legenda: ✅ verificado · ⬜ pendente (precisa de AWS ou de cluster) · ⚠️
 - [ ] (Opcional) apagar a pasta local `Projetos\tech-challenge-fiap` e os volumes Docker `oficina_postgres_data`/`oficina_jwt_keys`
 
 **Do Claude**
-- [ ] Sincronizar `main` → `homolog` nos 4 repos (ver "Dívida de sincronização") e abrir os PRs de melhoria (MAILER vazio, startup probe, smoke esperar alias `Active`)
+- [x] Sincronizar `main` → `homolog` e PRs de melhoria (MAILER, startup probe, smoke) — sessão 10; validar no próximo Lab
 - [ ] Conduzir a lista "Primeira coisa da próxima sessão" (New Relic, HPA, correlação ponta a ponta, rollback, Postman Run) e atualizar `docs/orcamento.md`
-- [ ] Depois da sessão: conferir que os links `blob/main` dos READMEs resolvem (`oficina-app` já está em `main`)
+- [ ] Promover `homolog` → `main` (com sessão AWS ativa) e então conferir que os links `blob/main` dos READMEs resolvem
 - [ ] (Decisão do usuário) o HTTP API não propaga W3C (trace começa na app) e anônimo recebe 401: aceitos (D3, D4)
 
 ## Estado atual dos repositórios (fim da sessão 8)
@@ -349,3 +343,4 @@ reviewer* = Victor, self-review permitido). **Secrets existentes**: org `ALLOWED
 - **2026-10-28 (sessão 8, fechamento)** — **E8 e E9 escritas sem AWS.** `oficina-app/docs/`: 17 ADRs (`adr/`) e 3 RFCs (`rfc/`) a partir das specs e do que foi implementado (ADR 0010/0011 descrevem os desvios: só os traces são OTLP; SSM passou a conter a licença New Relic), `arquitetura.md` (componentes com a fronteira da VPC, sequência de autenticação e de abertura/aprovação de OS), `erd.md` ligado à RFC 0002, `RUNBOOK.md` (substitui o `SESSION-GUIDE.md` da Fase 2), `orcamento.md` (medições a preencher) e `VALIDACAO-PROD.md`; `scripts/k3s-exec.sh` (kubectl por SSM Run Command). Seção Documentação nos READMEs dos outros 3 repos (auth-lambda#6, infra-k8s#10, infra-database#3). **Achados ao documentar a validação em produção:** (1) `prod` tem seed desligado, então smoke test da app e fluxo do cliente do `smoke-gateway.sh` ficam pulados (decisão D1); (2) o throttling do gateway (50 rps) impede gerar carga de HPA pela URL do gateway: usar o EIP; (3) merge em `main` dispara o deploy de prod, e o `apply` dos repos de infra não ignora sessão expirada: promover só durante a sessão; (4) squash diverge `homolog` e `main`: PR de sincronização. Correção no diagrama: transição inválida responde 422 (não 409).
 - **2026-10-28 (sessão 8, encerramento)** — Decisão D1: seed ligado em `prod` (`oficina-app#22`, **deixado aberto de propósito até a sessão em produção**: o merge em `main` publica em produção). Combinado: a **próxima sessão começa levantando tudo que está pendente** (protocolo em "Próximo passo") e segue para a validação em produção. Estado ao encerrar: 4 repos em `homolog` sem PR aberto além do #22; E0–E9 escritas; nada na AWS.
 - **2026-10-29 (sessão 9)** — **Validação em produção.** `oficina-infra-k8s#11` (promoção) → apply de `prod` (40 recursos); `infra-database#4` → RDS; `oficina-app#24` → deploy (falhou duas vezes: `MAILER_HOST` vazio e startup probe justo; contornado); `oficina-auth-lambda#8` (promoção com correção do `plan`) → Lambdas e API Gateway, smokes corrigidos em #9, #10 e #11; `infra-k8s#12` (NRQL). Validado: Flyway V1–V6 num RDS real com TLS obrigatório, SnapStart (575 ms), authorizer, 401/403/429, fluxo completo do cliente, 403 direto no EIP, Postman (pastas 1, 2, 3, 11), log JSON e métricas do pod, agentes New Relic de pé. **Não validado:** dados no New Relic (dashboards, alertas, Synthetics, logs), HPA sob carga, correlação gateway→app, rollback. Usuário destruiu o ambiente no fim do Lab. Lições e decisões acima; pendências em "Próximo passo".
+- **2026-10-31 (sessão 10, sem AWS — convite do Academy expirado, novo pedido feito)** — Sync `main` → `homolog` (`auth-lambda#12`, `infra-k8s#13`); `app#26` (MAILER opcional + startupProbe 120 s); `auth-lambda#14` (smoke espera alias `Active`); revisão do PDF e fechamento das lacunas de README/OpenAPI (`app#27`, `auth-lambda#13`, `infra-k8s#14`, `infra-database#5`). Applies de hml falharam por token expirado (esperado). Nada validado em AWS; os itens de "Primeira coisa da próxima sessão" seguem valendo. Lição: ao conferir `main` com `git checkout origin/main` nos repos, voltar para `homolog` (ficam em HEAD destacado).
