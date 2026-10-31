@@ -86,7 +86,7 @@ spec:
               cpu: "1000m"
               memory: "768Mi"
           # A JVM sobe antes de o Quarkus terminar de abrir o pool e rodar o Flyway.
-          # O startupProbe cobre essa janela (até 60s) e permite que o liveness use
+          # O startupProbe cobre essa janela (até 120s, folga para dois pods subindo juntos com o agente New Relic) e permite que o liveness use
           # um período curto depois, em vez de um initialDelay inflado que atrasaria
           # a detecção de travamento em regime.
           startupProbe:
@@ -94,7 +94,7 @@ spec:
               path: /q/health/started
               port: http
             periodSeconds: 3
-            failureThreshold: 20
+            failureThreshold: 40
           readinessProbe:
             httpGet:
               path: /q/health/ready
