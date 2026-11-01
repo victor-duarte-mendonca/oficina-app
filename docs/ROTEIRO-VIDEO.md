@@ -23,14 +23,3 @@ funcionando; o defeito era do teste, não do sistema.
 **Correção:** `oficina-auth-lambda#17` — o passo repete a chamada até 6 vezes, com 5 s entre as tentativas,
 quando recebe 429. Fica valendo a partir do próximo deploy.
 
-## 2. O `correlationId` do gateway não é o mesmo dos logs da app (nesta gravação)
-
-**Onde aparece:** a resposta de `POST /auth/login` pelo gateway traz `apigw-requestid` (ex.: `GLLn_hudoAMEVcg=`)
-e `X-Correlation-Id` (um UUID, gerado pela app). Os dois deveriam ser iguais.
-
-**Causa:** o `CorrelationIdFilter` da app só aceitava `[A-Za-z0-9._:-]` e descartava o `requestId` do gateway,
-que termina em `=`. Corrigido em `oficina-app#32` (aceita `=`, com teste); só vale depois de um novo deploy da app.
-
-**O que mostrar na gravação:** o `correlationId` nos logs da app (`service.name = oficina-mecanica`) e o
-`requestId` no access log do gateway (`service.name = oficina-prod`), cada um por si. Não afirmar que o mesmo
-id liga os dois nesta sessão.
