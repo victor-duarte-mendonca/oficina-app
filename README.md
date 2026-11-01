@@ -600,11 +600,27 @@ terraform output application_url
 - Swagger/OpenAPI (gerado automaticamente pelo Quarkus/SmallRye): `http://localhost:8080/swagger-ui` —
   especificação OpenAPI em `http://localhost:8080/openapi`. Em perfil `prod` o Swagger fica
   **desabilitado** por hardening; use a collection abaixo contra o ambiente publicado.
-- Collection Postman: [`postman/Oficina-Demo-Fase2.postman_collection.json`](postman/Oficina-Demo-Fase2.postman_collection.json).
+- **OpenAPI exportado** (a spec existe mesmo com o Swagger desligado em `prod`): [`docs/api/openapi.yaml`](docs/api/openapi.yaml) e
+  [`docs/api/openapi.json`](docs/api/openapi.json). Para regenerar:
+  `mvn -DskipTests package -Dquarkus.smallrye-openapi.store-schema-directory=docs/api`.
+- **Collections Postman**:
+  - [`postman/Oficina-Prod.postman_collection.json`](postman/Oficina-Prod.postman_collection.json) — Fase 3, todas as pastas
+    (autenticação por CPF no API Gateway, rotas protegidas, fluxo da OS, autorização por papel).
+  - [`postman/Oficina-Prod-Run.postman_collection.json`](postman/Oficina-Prod-Run.postman_collection.json) — mesma coleção sem as pastas
+    que dependem de `/q/*` e Mailpit, própria para a opção **Run** do Postman.
+  - [`postman/Oficina-Demo-Fase2.postman_collection.json`](postman/Oficina-Demo-Fase2.postman_collection.json) — Fase 2 (histórico).
+
+### Deploy ativo
+
+O ambiente roda em conta AWS Academy, que é efêmera: ao fim de cada sessão tudo é destruído (`terraform destroy`) e a URL do
+API Gateway muda a cada subida. Por isso o README não fixa uma URL: ela é publicada no SSM
+(`/oficina/<env>/api_gateway_url`) e exibida no resumo do workflow de deploy. A evidência do ambiente no ar está no vídeo
+e em [`docs/VALIDACAO-PROD.md`](docs/VALIDACAO-PROD.md).
 
 ### Vídeo demonstrativo
 
-[Link do vídeo](https://www.youtube.com/watch?v=ZaVSqljr3ek)
+- **Fase 3:** _link a ser inserido após a gravação_ (YouTube/Vimeo, até 15 min).
+- Fase 2 (histórico): [vídeo](https://www.youtube.com/watch?v=ZaVSqljr3ek)
 
 ## Documentação
 

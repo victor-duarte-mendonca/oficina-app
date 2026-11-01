@@ -198,6 +198,14 @@ jobs:
             echo "::error::Sem /oficina/${STACK_ENV}/db_endpoint: aplique o oficina-infra-database neste workspace antes."
             exit 1
           fi
+          # MAILER_* só entram no Secret quando preenchidos: uma chave vazia vence o padrão
+          # (${MAILER_HOST:localhost}) do application.properties e o Quarkus recusa subir (SRCFG00040).
+          mailer_args=()
+          for name in MAILER_HOST MAILER_USERNAME MAILER_PASSWORD; do
+            if [ -n "${!name:-}" ]; then
+              mailer_args+=(--from-literal="$name=${!name}")
+            fi
+          done
           kubectl create secret generic oficina-secrets \
             --namespace oficina \
             --from-literal=DB_HOST="$DB_HOST" \
@@ -205,9 +213,7 @@ jobs:
             --from-literal=DB_PASSWORD="$DB_PASSWORD" \
             --from-literal=LAMBDA_RO_PASSWORD="$LAMBDA_RO_PASSWORD" \
             --from-literal=APP_GATEWAY_KEY="${APP_GATEWAY_KEY:-}" \
-            --from-literal=MAILER_HOST="${MAILER_HOST:-}" \
-            --from-literal=MAILER_USERNAME="${MAILER_USERNAME:-}" \
-            --from-literal=MAILER_PASSWORD="${MAILER_PASSWORD:-}" \
+            "${mailer_args[@]}" \
             --from-literal=APP_SEED_ADMIN_PASSWORD="${APP_SEED_ADMIN_PASSWORD:-}" \
             --from-literal=APP_SEED_MECHANIC_PASSWORD="${APP_SEED_MECHANIC_PASSWORD:-}" \
             --from-literal=NEW_RELIC_LICENSE_KEY="${NEW_RELIC_LICENSE_KEY:-}" \
