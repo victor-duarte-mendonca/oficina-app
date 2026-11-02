@@ -35,6 +35,7 @@ spec:
       labels:
         app: oficina-app
       annotations:
+        newrelic.io/scrape: "true"
         prometheus.io/scrape: "true"
         prometheus.io/path: /q/metrics
         prometheus.io/port: "8080"
