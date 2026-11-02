@@ -4,10 +4,8 @@
 # usando a identidade de rede do node. Aqui o tráfego de entrada fica restrito ao
 # ingress controller, e a saída ao DNS, ao PostgreSQL e ao SMTP.
 #
-# Requer um CNI que implemente NetworkPolicy. O flannel padrão do k3s NÃO
-# implementa — para valer, subir o k3s com `--flannel-backend=none` + Calico, ou
-# usar um cluster gerenciado (EKS com Calico/Cilium). Fica versionado porque é o
-# estado desejado e portável; num k3s padrão é inerte, não quebra nada.
+# O k3s embute o controlador de NetworkPolicy (kube-router): a política vale de fato. Por isso o
+# namespace newrelic precisa estar liberado para o prometheus-agent coletar /q/metrics.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -25,6 +23,10 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+        # Prometheus agent do New Relic (namespace newrelic): coleta /q/metrics.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: newrelic
       ports:
         - protocol: TCP
           port: 8080
