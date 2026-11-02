@@ -38,6 +38,12 @@ class CorrelationIdFilterTest {
             .isEqualTo("1-67891233-abcdef012345678912345678");
     }
 
+    /** O requestId do API Gateway HTTP é base64url e termina em "=": precisa ser aceito para ligar gateway e app. */
+    @Test
+    void resolve_shouldAcceptTheApiGatewayRequestIdFormat() {
+        assertThat(CorrelationIdFilter.resolve(request("GLLn_hudoAMEVcg=", null))).isEqualTo("GLLn_hudoAMEVcg=");
+    }
+
     @Test
     void resolve_shouldPreferCorrelationIdOverGatewayRequestId() {
         assertThat(CorrelationIdFilter.resolve(request("mine", "gateway"))).isEqualTo("mine");
