@@ -27,6 +27,11 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+      # O Testcontainers 1.20.1 (fixado pelo BOM do Quarkus 3.15) negocia a API Docker 1.32, e o Docker
+      # atual dos runners exige no mínimo a 1.40 ("client version 1.32 is too old"). Fixar a versão da API
+      # no docker-java faz os testes com PostgreSQL/Dev Services voltarem a achar o daemon.
+      - name: Fixar a versão da API do Docker para o Testcontainers
+        run: echo "api.version=1.44" > "$HOME/.docker-java.properties"
       - name: mvn verify (testes + gate JaCoCo)
         run: mvn -B --no-transfer-progress verify
       - name: Publicar relatório de testes
