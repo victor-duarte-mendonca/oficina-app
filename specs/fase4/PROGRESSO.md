@@ -52,7 +52,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 **Suíte:** `mvn verify` **590 testes verdes** (eram 431), gate por pacote + BUNDLE atendidos.
 
-## Checklist da sessão 12b (branch `feature/f4-bdd-saga`, empilhada sobre `feature/f4-os-saga`)
+## Checklist da sessão 12b (branch `feature/f4-bdd-saga`, PR #37 para `homolog`)
 
 **Spec 09 — BDD**
 - ✅ `features/saga/ciclo-da-ordem-de-servico.feature` (pt-BR): S1 fluxo completo, S2 recusa, S5 Pix esgotado, S6 falha com estorno, S7 estorno recusado → intervenção
@@ -77,8 +77,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 ## Próximo passo
 
-1. Usuário: mergear o PR #36 (`feature/f4-os-saga`) em `homolog` e **avisar o Claude**, que religa a base do PR do BDD
-   (`feature/f4-bdd-saga`, empilhado) com `rebase --onto`. Não fazer `git pull` na branch empilhada.
+1. Usuário: revisar e mergear o PR #37 (BDD) em `homolog`. O #36 (OS + Saga) já foi mergeado em 2026-11-23.
 2. Claude: **spec 06 (Execution Service)** em `../oficina-execution-service` (pasta local; o usuário cria o repositório no GitHub depois).
 3. Claude: **spec 05 (Billing)** com o gateway de pagamento fake; o adapter Mercado Pago espera as credenciais de teste do usuário.
 
@@ -88,4 +87,4 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 |---|---|---|
 | 11 | 2026-11-22 | specs 01–14, ADR 0022, PR #34 (docs) e #35 (fix do Docker no CI) |
 | 12 | 2026-11-23 | OS Service da Fase 4: contratos, V7, Saga, outbox/inbox, histórico, rotas, 590 testes (PR #36) |
-| 12b | 2026-11-23 | Spec 09: BDD da Saga em Cucumber (S1, S2, S5, S6, S7), 591 testes (PR empilhado sobre o #36) |
+| 12b | 2026-11-23 | Spec 09: BDD da Saga em Cucumber (S1, S2, S5, S6, S7), 591 testes (PR #37; #36 mergeado) |
