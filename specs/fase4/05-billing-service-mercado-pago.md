@@ -77,6 +77,32 @@ IP público estável) — a Saga não depende exclusivamente do webhook.
 *Timeouts* de conexão 3 s / leitura 10 s; *retry* com *backoff* só em erro de rede/5xx e **sempre** com a mesma `X-Idempotency-Key`;
 *circuit breaker* (SmallRye Fault Tolerance) com `PaymentRequestFailed` quando aberto; nunca tentar de novo uma criação sem a chave.
 
+## 6.1 Implementação (2026-11-23, repositório local `../oficina-billing-service`)
+
+- Quarkus 3.15.7 / Java 21, hexagonal: `domain` e `application` em Java puro (montados por `ApplicationWiring`). Agregados
+  `Budget` e `Payment` com eventos registrados e `Snapshot` (Memento) para persistir; `Money` em `BigDecimal` com 2 casas.
+- **Strategy** por comando (`GenerateBudget`, `RequestPayment`, `VoidBudget`, `RefundPayment`) e por provedor
+  (`PAYMENT_PROVIDER=simulated|mercadopago`). `RequestPayment` e `RefundPayment` em três passos (transação → provedor fora
+  de transação → transação), com a chave de idempotência gravada antes da chamada (V6 resolvida assim).
+- Diferenças em relação ao rascunho: sem `DRAFT` persistido (o orçamento nasce `SENT`); `Payment` ganhou `REQUESTED`
+  (intenção gravada antes do provedor) e `FAILED` (provedor recusou/indisponível); qualquer orçamento pode ir a `VOIDED`
+  (a compensação sempre confirma); pagamento aprovado depois de `EXPIRED`/`REJECTED` volta a `APPROVED` e é publicado
+  (órfão, a Saga estorna); Pix pendente além do prazo é expirado pela reconciliação mesmo sem resposta do provedor; pedido
+  sem resposta do provedor por 5 min é encerrado como `PaymentRequestFailed`.
+- `PaymentGatewayPort` com **2** implementações em vez de 3: Mercado Pago e um simulado que é ao mesmo tempo determinístico
+  (testes) e simulável (`POST /admin/payments/{id}/simulate`, só com `PAYMENT_SIMULATION_ENABLED=true`, ligado no overlay hml).
+- Webhook: assinatura HMAC-SHA256 com o manifesto `id:…;request-id:…;ts:…;` (**V3 ainda não confirmada** — a documentação
+  lida confirma só o formato `ts`/`v1`), *fail closed* com o provedor real; reconsulta sempre.
+- Contrato do adapter: servidor HTTP local (JDK) no formato documentado, em vez de WireMock gravado — falta regravar com o
+  sandbox. `gitleaks` no CI (job `secret-scan`).
+- **Testes:** 138 (domínio, casos de uso em memória, contrato, adapter MP, webhook, PostgreSQL real com concorrência,
+  LocalStack, API com JWT real); cobertura 94,7% linhas / 85,3% ramos. Smoke `docker compose`: comando na fila →
+  `BudgetGenerated` → aprovação pelo link → `PaymentRequested`, com `correlationId`/`causationId` preservados.
+- **Bug achado nos testes com PostgreSQL:** o Hibernate do Quarkus só rastreia alterações feitas pelos métodos da própria
+  entidade; atribuições de campo feitas pelo repositório não eram gravadas (o mapeamento passou para dentro das entidades).
+- **Pendente:** credenciais de teste do Mercado Pago (usuário) e V1–V5; criação do repositório no GitHub (usuário); RDS (D3)
+  e filas (spec 12); OS: não enviar o e-mail de orçamento no fluxo da Saga (hoje sairia um segundo e-mail, sem código).
+
 ## 7. Critérios de aceite
 
 - [ ] `PaymentGatewayPort` com 3 implementações: Mercado Pago, fake determinístico (testes) e fake simulável (`dev`/`hml`).
