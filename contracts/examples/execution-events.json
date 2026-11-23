@@ -1,0 +1,9 @@
+[
+  { "messageId": "7a2d3b20-0000-4000-8000-000000000001", "type": "ExecutionEnqueued", "version": 1, "kind": "EVENT", "sagaId": "0b7d2f5e-1111-4000-8000-000000000001", "workOrderId": 1, "orderNumber": "OS-000001", "occurredAt": "2026-11-23T14:11:00Z", "payload": { "position": 3 } },
+  { "messageId": "7a2d3b20-0000-4000-8000-000000000002", "type": "ExecutionEnqueueFailed", "version": 1, "kind": "EVENT", "sagaId": "0b7d2f5e-1111-4000-8000-000000000001", "workOrderId": 1, "occurredAt": "2026-11-23T14:11:00Z", "payload": { "reason": "tabela indisponível" } },
+  { "messageId": "7a2d3b20-0000-4000-8000-000000000003", "type": "ExecutionStarted", "version": 1, "kind": "EVENT", "sagaId": "0b7d2f5e-1111-4000-8000-000000000001", "workOrderId": 1, "occurredAt": "2026-11-23T15:00:00Z", "payload": { "assignee": "mecanico" } },
+  { "messageId": "7a2d3b20-0000-4000-8000-000000000004", "type": "ExecutionFinished", "version": 1, "kind": "EVENT", "sagaId": "0b7d2f5e-1111-4000-8000-000000000001", "workOrderId": 1, "occurredAt": "2026-11-23T17:00:00Z", "payload": { "summary": "troca de pastilhas concluída" } },
+  { "messageId": "7a2d3b20-0000-4000-8000-000000000005", "type": "ExecutionFailed", "version": 1, "kind": "EVENT", "sagaId": "0b7d2f5e-1111-4000-8000-000000000001", "workOrderId": 1, "occurredAt": "2026-11-23T16:00:00Z", "payload": { "reason": "peça indisponível" } },
+  { "messageId": "7a2d3b20-0000-4000-8000-000000000006", "type": "ExecutionCancelled", "version": 1, "kind": "EVENT", "sagaId": "0b7d2f5e-1111-4000-8000-000000000001", "workOrderId": 1, "occurredAt": "2026-11-23T16:00:00Z", "payload": { "alreadyFinished": false } },
+  { "messageId": "7a2d3b20-0000-4000-8000-000000000007", "type": "ExecutionProgress", "version": 1, "kind": "INFO", "workOrderId": 1, "occurredAt": "2026-11-23T15:30:00Z", "payload": { "phase": "REPAIR", "note": "pastilhas removidas" } }
+]

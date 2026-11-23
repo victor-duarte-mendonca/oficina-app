@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oficina.local/contracts/execution-events.schema.json",
+  "title": "Eventos produzidos pelo Execution Service (respostas da Saga e informativos)",
+  "allOf": [
+    { "$ref": "envelope.schema.json" },
+    {
+      "properties": {
+        "type": { "enum": ["ExecutionEnqueued", "ExecutionEnqueueFailed", "ExecutionStarted", "ExecutionFinished", "ExecutionFailed", "ExecutionCancelled", "ExecutionProgress"] }
+      }
+    },
+    { "if": { "properties": { "type": { "const": "ExecutionEnqueued" } } }, "then": { "$ref": "#/$defs/sagaEvent", "properties": { "payload": { "$ref": "#/$defs/ExecutionEnqueued" } } } },
+    { "if": { "properties": { "type": { "const": "ExecutionEnqueueFailed" } } }, "then": { "$ref": "#/$defs/sagaEvent", "properties": { "payload": { "$ref": "#/$defs/Failure" } } } },
+    { "if": { "properties": { "type": { "const": "ExecutionStarted" } } }, "then": { "$ref": "#/$defs/sagaEvent", "properties": { "payload": { "$ref": "#/$defs/ExecutionStarted" } } } },
+    { "if": { "properties": { "type": { "const": "ExecutionFinished" } } }, "then": { "$ref": "#/$defs/sagaEvent", "properties": { "payload": { "$ref": "#/$defs/ExecutionFinished" } } } },
+    { "if": { "properties": { "type": { "const": "ExecutionFailed" } } }, "then": { "$ref": "#/$defs/sagaEvent", "properties": { "payload": { "$ref": "#/$defs/Failure" } } } },
+    { "if": { "properties": { "type": { "const": "ExecutionCancelled" } } }, "then": { "$ref": "#/$defs/sagaEvent", "properties": { "payload": { "$ref": "#/$defs/ExecutionCancelled" } } } },
+    { "if": { "properties": { "type": { "const": "ExecutionProgress" } } }, "then": { "properties": { "kind": { "const": "INFO" }, "payload": { "$ref": "#/$defs/ExecutionProgress" } } } }
+  ],
+  "$defs": {
+    "sagaEvent": {
+      "required": ["sagaId"],
+      "properties": { "kind": { "const": "EVENT" }, "sagaId": { "type": "string" } }
+    },
+    "ExecutionEnqueued": {
+      "type": "object", "required": ["position"], "additionalProperties": false,
+      "properties": { "position": { "type": "integer", "minimum": 1 } }
+    },
+    "ExecutionStarted": {
+      "type": "object", "required": ["assignee"], "additionalProperties": false,
+      "properties": { "assignee": { "type": "string", "minLength": 1 } }
+    },
+    "ExecutionFinished": {
+      "type": "object", "required": ["summary"], "additionalProperties": false,
+      "properties": { "summary": { "type": "string", "maxLength": 1000 } }
+    },
+    "ExecutionCancelled": {
+      "type": "object", "required": ["alreadyFinished"], "additionalProperties": false,
+      "properties": { "alreadyFinished": { "type": "boolean" } }
+    },
+    "ExecutionProgress": {
+      "type": "object", "required": ["phase", "note"], "additionalProperties": false,
+      "properties": {
+        "phase": { "enum": ["DIAGNOSIS", "REPAIR"] },
+        "note": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "Failure": {
+      "type": "object", "required": ["reason"], "additionalProperties": false,
+      "properties": { "reason": { "$ref": "envelope.schema.json#/$defs/reason" } }
+    }
+  }
+}

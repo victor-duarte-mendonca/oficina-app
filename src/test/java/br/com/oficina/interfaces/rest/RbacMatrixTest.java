@@ -63,7 +63,12 @@ class RbacMatrixTest {
                 route("GET", "/admin/services", MECHANIC, ADMIN),
                 route("GET", "/admin/work-orders", MECHANIC, ADMIN),
                 route("PATCH", "/admin/work-orders/999999/start-diagnosis", MECHANIC, ADMIN),
+                // Fase 4: histórico e Saga (consulta)
+                route("GET", "/admin/work-orders/999999/history", MECHANIC, ADMIN),
+                route("GET", "/admin/work-orders/999999/saga", MECHANIC, ADMIN),
+                route("GET", "/admin/sagas/00000000-0000-0000-0000-000000000000", MECHANIC, ADMIN),
                 // somente ADMIN
+                route("POST", "/admin/sagas/00000000-0000-0000-0000-000000000000/retry-compensation", ADMIN),
                 route("POST", "/admin/clients", ADMIN),
                 route("DELETE", "/admin/clients/999999", ADMIN),
                 route("DELETE", "/admin/parts/999999", ADMIN),
@@ -74,6 +79,7 @@ class RbacMatrixTest {
                 route("GET", "/me/vehicles", CLIENT),
                 route("GET", "/me/work-orders", CLIENT),
                 route("GET", "/me/work-orders/999999", CLIENT),
+                route("GET", "/me/work-orders/999999/history", CLIENT),
                 route("POST", "/me/work-orders", CLIENT),
                 route("POST", "/me/work-orders/999999/approval", CLIENT),
                 // públicas

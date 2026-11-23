@@ -32,6 +32,7 @@ public class WorkOrder {
     private OffsetDateTime diagnosisStartedAt;
     private OffsetDateTime sentForApprovalAt;
     private OffsetDateTime approvedAt;
+    private OffsetDateTime queuedForExecutionAt;
     private OffsetDateTime executionStartedAt;
     private OffsetDateTime finishedAt;
     private OffsetDateTime deliveredAt;
@@ -59,9 +60,9 @@ public class WorkOrder {
             Long id, String orderNumber, CustomerSnapshot customer, VehicleSnapshot vehicle,
             WorkOrderStatus status, String notes, BigDecimal totalCost, OffsetDateTime createdAt,
             OffsetDateTime diagnosisStartedAt, OffsetDateTime sentForApprovalAt, OffsetDateTime approvedAt,
-            OffsetDateTime executionStartedAt, OffsetDateTime finishedAt, OffsetDateTime deliveredAt,
-            OffsetDateTime cancelledAt, String approvalToken, OffsetDateTime approvalTokenConsumedAt,
-            List<WorkOrderPart> parts, List<WorkOrderServiceItem> services) {
+            OffsetDateTime queuedForExecutionAt, OffsetDateTime executionStartedAt, OffsetDateTime finishedAt,
+            OffsetDateTime deliveredAt, OffsetDateTime cancelledAt, String approvalToken,
+            OffsetDateTime approvalTokenConsumedAt, List<WorkOrderPart> parts, List<WorkOrderServiceItem> services) {
         WorkOrder wo = new WorkOrder();
         wo.id = id;
         wo.orderNumber = orderNumber;
@@ -74,6 +75,7 @@ public class WorkOrder {
         wo.diagnosisStartedAt = diagnosisStartedAt;
         wo.sentForApprovalAt = sentForApprovalAt;
         wo.approvedAt = approvedAt;
+        wo.queuedForExecutionAt = queuedForExecutionAt;
         wo.executionStartedAt = executionStartedAt;
         wo.finishedAt = finishedAt;
         wo.deliveredAt = deliveredAt;
@@ -215,6 +217,46 @@ public class WorkOrder {
         cancelledAt = OffsetDateTime.now();
     }
 
+    // ===== Transições conduzidas pela Saga (Fase 4, spec 07 §2) =====
+    // No fluxo da Saga o orçamento, a aprovação e o token pertencem ao Billing: a OS só registra em
+    // que etapa está. Cada método aceita apenas o estado de origem correto.
+
+    /** Orçamento pedido ao Billing: a OS deixa de ser editável enquanto aguarda a decisão do cliente. */
+    public void submitForBudget() {
+        requireStatus(WorkOrderStatus.IN_DIAGNOSIS);
+        recalculateTotalCost();
+        status = WorkOrderStatus.AWAITING_APPROVAL;
+        sentForApprovalAt = OffsetDateTime.now();
+    }
+
+    /** O Billing não conseguiu gerar o orçamento: volta ao diagnóstico para correção dos itens. */
+    public void revertToDiagnosis() {
+        requireStatus(WorkOrderStatus.AWAITING_APPROVAL);
+        status = WorkOrderStatus.IN_DIAGNOSIS;
+        sentForApprovalAt = null;
+    }
+
+    /** Orçamento aprovado e Pix emitido. */
+    public void awaitPayment() {
+        requireStatus(WorkOrderStatus.AWAITING_APPROVAL);
+        status = WorkOrderStatus.AWAITING_PAYMENT;
+        approvedAt = OffsetDateTime.now();
+    }
+
+    /** Pagamento confirmado e OS na fila do Execution Service. */
+    public void queueForExecution() {
+        requireStatus(WorkOrderStatus.AWAITING_PAYMENT);
+        status = WorkOrderStatus.AWAITING_EXECUTION;
+        queuedForExecutionAt = OffsetDateTime.now();
+    }
+
+    /** O mecânico iniciou o reparo no Execution Service. */
+    public void startExecution() {
+        requireStatus(WorkOrderStatus.AWAITING_EXECUTION);
+        status = WorkOrderStatus.IN_EXECUTION;
+        executionStartedAt = OffsetDateTime.now();
+    }
+
     public void complete() {
         requireStatus(WorkOrderStatus.IN_EXECUTION);
         status = WorkOrderStatus.FINISHED;
@@ -267,6 +309,8 @@ public class WorkOrder {
             case RECEIVED -> createdAt;
             case IN_DIAGNOSIS -> diagnosisStartedAt;
             case AWAITING_APPROVAL -> sentForApprovalAt;
+            case AWAITING_PAYMENT -> approvedAt;
+            case AWAITING_EXECUTION -> queuedForExecutionAt;
             case IN_EXECUTION -> executionStartedAt;
             case FINISHED -> finishedAt;
             case DELIVERED -> deliveredAt;
@@ -297,6 +341,7 @@ public class WorkOrder {
     public OffsetDateTime getDiagnosisStartedAt() { return diagnosisStartedAt; }
     public OffsetDateTime getSentForApprovalAt() { return sentForApprovalAt; }
     public OffsetDateTime getApprovedAt() { return approvedAt; }
+    public OffsetDateTime getQueuedForExecutionAt() { return queuedForExecutionAt; }
     public OffsetDateTime getExecutionStartedAt() { return executionStartedAt; }
     public OffsetDateTime getFinishedAt() { return finishedAt; }
     public OffsetDateTime getDeliveredAt() { return deliveredAt; }

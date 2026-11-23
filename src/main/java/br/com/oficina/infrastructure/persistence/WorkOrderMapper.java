@@ -47,7 +47,7 @@ public class WorkOrderMapper {
         return WorkOrder.rehydrate(
             e.getId(), e.getOrderNumber(), customer, vehicle, e.getStatus(), e.getNotes(),
             e.getTotalCost(), e.getCreatedAt(), e.getDiagnosisStartedAt(), e.getSentForApprovalAt(),
-            e.getApprovedAt(), e.getExecutionStartedAt(), e.getFinishedAt(), e.getDeliveredAt(),
+            e.getApprovedAt(), e.getQueuedForExecutionAt(), e.getExecutionStartedAt(), e.getFinishedAt(), e.getDeliveredAt(),
             e.getCancelledAt(), e.getApprovalToken(), e.getApprovalTokenConsumedAt(), parts, services);
     }
 
@@ -68,6 +68,7 @@ public class WorkOrderMapper {
         e.setDiagnosisStartedAt(d.getDiagnosisStartedAt());
         e.setSentForApprovalAt(d.getSentForApprovalAt());
         e.setApprovedAt(d.getApprovedAt());
+        e.setQueuedForExecutionAt(d.getQueuedForExecutionAt());
         e.setExecutionStartedAt(d.getExecutionStartedAt());
         e.setFinishedAt(d.getFinishedAt());
         e.setDeliveredAt(d.getDeliveredAt());

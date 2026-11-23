@@ -31,3 +31,8 @@ data:
   QUARKUS_DATASOURCE_JDBC_MAX_SIZE: "8"
   APP_SEED_ADMIN_USERNAME: "admin"
   APP_SEED_MECHANIC_USERNAME: "mecanico"
+  # Fase 4 (specs/fase4/04 e 12): Saga orquestrada e SQS. Desligadas até Billing e Execution estarem no ar —
+  # com a Saga desligada vale o fluxo da Fase 3. As URLs das filas (SQS_*_URL) vêm do SSM no deploy, não daqui.
+  APP_SAGA_ENABLED: "false"
+  APP_MESSAGING_ENABLED: "false"
+  AWS_REGION: "us-east-1"

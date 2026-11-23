@@ -56,6 +56,9 @@ public class WorkOrderEntity {
     @Column(name = "approved_at")
     private OffsetDateTime approvedAt;
 
+    @Column(name = "queued_for_execution_at")
+    private OffsetDateTime queuedForExecutionAt;
+
     @Column(name = "execution_started_at")
     private OffsetDateTime executionStartedAt;
 
@@ -124,6 +127,9 @@ public class WorkOrderEntity {
 
     public OffsetDateTime getApprovedAt() { return approvedAt; }
     public void setApprovedAt(OffsetDateTime v) { this.approvedAt = v; }
+
+    public OffsetDateTime getQueuedForExecutionAt() { return queuedForExecutionAt; }
+    public void setQueuedForExecutionAt(OffsetDateTime v) { this.queuedForExecutionAt = v; }
 
     public OffsetDateTime getExecutionStartedAt() { return executionStartedAt; }
     public void setExecutionStartedAt(OffsetDateTime v) { this.executionStartedAt = v; }

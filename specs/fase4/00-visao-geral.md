@@ -6,6 +6,10 @@
 
 ## 0. Estado (atualizar a cada sessão)
 
+- **2026-11-23 — implementação começou.** O estado detalhado por spec passou para [`PROGRESSO.md`](PROGRESSO.md) (checklist, o que
+  não pôde ser testado sem AWS/credenciais e próximo passo). OS Service: contratos, V7, Saga orquestrada, outbox/inbox e histórico
+  prontos e testados (branch `feature/f4-os-saga`). Os itens abaixo são o registro do planejamento.
+
 - **2026-11-22 — especificações escritas (specs 01–14 + ADR 0022); NADA implementado.** Falta apenas confirmar as decisões da §5
   e promover os documentos (ainda **sem commit**, arquivos novos em `oficina-app`, branch `homolog`). Os requisitos do PDF foram
   mapeados item a item no §7; o texto do PDF foi lido por inteiro (14 requisitos, 3 grupos de entregáveis).

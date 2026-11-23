@@ -5,9 +5,9 @@
 
 Workspace local: `C:\Users\victo\Desktop\Projetos\FIAP\` (os 4 repos + `oficina-front/` fora do escopo).
 
-> **Fase 4 (Tech Challenge 12SOAT) — especificada em 2026-11-22 (specs 01–14), nada implementado.** Plano, decisões propostas, índice das specs e próximo passo em
-> [`fase4/00-visao-geral.md`](fase4/00-visao-geral.md) §0 e §7; ADRs 0018–0022 (*Proposto*) em `docs/adr`. Este arquivo continua sendo o
-> estado da **Fase 3**; a Fase 4 ganhará `fase4/PROGRESSO.md` na etapa F0.
+> **Fase 4 (Tech Challenge 12SOAT) — em implementação.** Estado, checklist e próximo passo em
+> [`fase4/PROGRESSO.md`](fase4/PROGRESSO.md); plano e índice das specs em [`fase4/00-visao-geral.md`](fase4/00-visao-geral.md).
+> Este arquivo continua sendo o estado da **Fase 3**.
 
 ## Etapas (spec 00 §4)
 

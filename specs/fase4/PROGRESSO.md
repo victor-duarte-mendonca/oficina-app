@@ -1,0 +1,80 @@
+# Progresso da Fase 4
+
+> Fonte única do estado da Fase 4. Ler no início da sessão; atualizar ao fim de cada spec concluída.
+> Plano e rastreabilidade requisito → spec: [`00-visao-geral.md`](00-visao-geral.md). O estado da Fase 3 continua em
+> [`../PROGRESSO.md`](../PROGRESSO.md).
+> Última atualização: **2026-11-23** (sessão 12 — OS Service: contratos, V7, Saga orquestrada, outbox/inbox, histórico).
+
+## Estado por spec
+
+Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro serviço ou AWS · ⬜ não iniciada.
+
+| Spec | Tema | Estado | O que falta |
+|---|---|---|---|
+| 01 | Fronteiras e propriedade de dados | 🟡 | criar os 2 repositórios (usuário); ArchUnit nos 3 serviços |
+| 02 | SQL × NoSQL | 🟡 | **OS: V7 ✅**; RDS do Billing e DynamoDB do Execution (F3/F4 + F2) |
+| 03 | Mensageria e contratos | 🟡 | **OS: contratos, outbox, inbox, relay, consumidor ✅**; lado Billing/Execution; filas reais (F2); continuar o trace no consumo (spec 13) |
+| 04 | Saga orquestrada | 🟡 | **orquestrador, compensações, timeouts e órfãos ✅ (S1, S2, S5–S11 em unidade; S1, S6, S8, cancelamento e timeout em integração)**; S9 (pod morto) na sessão AWS; README |
+| 05 | Billing + Mercado Pago | ⬜ | tudo; **credenciais de teste do Mercado Pago (usuário)** |
+| 06 | Execution Service | ⬜ | tudo |
+| 07 | Refatoração do OS | 🟡 | **Strategy de fluxo, transições da Saga, histórico, rotas de Saga, 410 ✅**; `sagaState` público; Postman; V8 |
+| 08 | Testes e cobertura | 🟡 | **OS: gate BUNDLE (80% linhas / 70% ramos) ✅ — 94,0% / 79,6%**; Billing/Execution; ArchUnit |
+| 09 | BDD | ⬜ | Cucumber S1, S2, S5, S6, S7 (a base já existe: `SagaFlowIntegrationTest`) |
+| 10 | SonarCloud | ⬜ | **organização e `SONAR_TOKEN` (usuário)** |
+| 11 | CI/CD por serviço | ⬜ | pipelines dos repos novos; checks novos no ruleset |
+| 12 | Infra (SQS, DynamoDB, RDS, gateway, IMDS) | ⬜ | Terraform; spike de capacidade do nó; **sessão AWS (usuário)** |
+| 13 | Observabilidade distribuída | 🟡 | **métricas da Saga e `traceparent`/`correlationId` no envelope ✅**; extração no consumo, dashboards, alertas, dívida E7 |
+| 14 | Documentação e entregáveis | ⬜ | READMEs, diagramas, Postman, PDF (usuário), vídeo (usuário) |
+
+## Checklist do que foi entregue (sessão 12, branch `feature/f4-os-saga`)
+
+**Spec 03 — contratos**
+- ✅ `contracts/`: envelope + 3 catálogos por produtor (JSON Schema 2020-12) + exemplos válidos de todos os 20 eventos + 6 inválidos
+- ✅ `ContractSchemaTest` (consumidor): todo exemplo valida no schema **e** é decodificado/traduzido pelo OS; o catálogo inteiro tem tradutor
+- ✅ `SagaCommandContractTest` (produtor): os 6 comandos + `DiagnosisStarted`, gerados pelo código real, validam no schema; sem CPF no fio
+- ✅ **Bug real achado pelo teste:** comando de Saga sem `sagaId` passava no schema (`properties` não exige presença) → `required` adicionado
+
+**Spec 02/07 — OS**
+- ✅ V7 aplicada em PostgreSQL 16 real: status `AWAITING_PAYMENT`/`AWAITING_EXECUTION`, `queued_for_execution_at`, `work_order_status_history`
+  (com backfill), `saga_instance` (índice único parcial = 1 Saga viva por OS), `saga_step_log`, `outbox`, `inbox`
+- ✅ `WorkOrder`: `submitForBudget`, `revertToDiagnosis`, `awaitPayment`, `queueForExecution`, `startExecution` (só aceitam a origem correta)
+- ✅ Strategy `ApprovalWorkflow` (Fase 3 × Saga) por `APP_SAGA_ENABLED` (desligada por padrão; ConfigMap atualizado, `kubectl kustomize` ok)
+- ✅ Rotas: `GET /admin/work-orders/{id}/history`, `GET /me/work-orders/{id}/history` (404 para OS alheia, sem nome de funcionário),
+  `GET /admin/work-orders/{id}/saga`, `GET /admin/sagas/{id}`, `POST /admin/sagas/{id}/retry-compensation` (ADMIN); 410 em `approve`/`reject`/`complete`
+- ✅ Matriz RBAC: +5 rotas × 4 papéis
+
+**Spec 04 — Saga**
+- ✅ Domínio puro com **State pattern** (um handler por estado), pilha de compensações (LIFO), `SagaPolicy`/relógio injetados
+- ✅ `WorkOrderSagaTest` (43 casos): cada linha da tabela §4 em sucesso/falha/timeout, compensação parada e retomada, cancelamento manual, órfãos
+- ✅ `SagaFlowIntegrationTest` (7): caminho feliz até `FINISHED`; falha na execução → estorno → anulação → `CANCELLED` com estoque devolvido;
+  mensagem duplicada; cancelamento manual com Saga ativa; 410; timeout pelo job; resposta desconhecida
+- ✅ `SqsMessageTransportTest` contra **LocalStack**: FIFO, grupo por OS, deduplicação pelo `messageId`, confirmação apaga
+
+**Suíte:** `mvn verify` **590 testes verdes** (eram 431), gate por pacote + BUNDLE atendidos.
+
+## Não testado por depender de AWS ou de credenciais
+
+- SQS **real** na conta Academy (só LocalStack) e a permissão do `LabRole` para SQS — sessão AWS (spec 12).
+- Credenciais dos pods via IMDS (`hop_limit`, ADR 0022) — não implementado ainda; exige o cluster.
+- `traceparent` com tracing ligado (o SDK OTel fica desligado em teste; o envelope grava `null`) — New Relic na sessão AWS.
+
+## Decisões tomadas nesta sessão (registradas nas specs/ADRs)
+
+- **D2 = SQS** e **D4 = nomes padrão** assumidos (o usuário não se opôs); D1 e D3 seguem abertas.
+- SDK AWS v2 direto em vez da extensão Quarkiverse (ADR 0020, spec 03 §5).
+- `send-for-approval` continua síncrono (OS vai na hora para `AWAITING_APPROVAL`); fluxo legado detectado pela ausência de Saga (spec 07 §3/§5).
+- Colunas explícitas em `saga_instance` no lugar de `context` JSONB (spec 02 §2).
+
+## Próximo passo
+
+1. Usuário: revisar e mergear o PR de `feature/f4-os-saga` em `homolog` (só o OS; Saga desligada por padrão — nada muda em produção).
+2. Claude: **spec 09 (BDD)** sobre o `SagaFlowIntegrationTest` (Cucumber, S1/S2/S5/S6/S7) — só depende do OS.
+3. Claude: **spec 06 (Execution Service)** em `../oficina-execution-service` (pasta local; o usuário cria o repositório no GitHub depois).
+4. Claude: **spec 05 (Billing)** com o gateway de pagamento fake; o adapter Mercado Pago espera as credenciais de teste do usuário.
+
+## Histórico
+
+| Sessão | Data | Feito |
+|---|---|---|
+| 11 | 2026-11-22 | specs 01–14, ADR 0022, PR #34 (docs) e #35 (fix do Docker no CI) |
+| 12 | 2026-11-23 | OS Service da Fase 4: contratos, V7, Saga, outbox/inbox, histórico, rotas, 590 testes |

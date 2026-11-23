@@ -21,6 +21,7 @@ import br.com.oficina.application.ports.out.NotificationGatewayPort;
 import br.com.oficina.application.ports.out.PartRepositoryPort;
 import br.com.oficina.application.ports.out.ServiceItemRepositoryPort;
 import br.com.oficina.application.ports.out.VehicleRepositoryPort;
+import br.com.oficina.application.ports.out.WorkOrderHistoryPort;
 import br.com.oficina.application.ports.out.WorkOrderRepositoryPort;
 import br.com.oficina.domain.exception.BusinessException;
 import br.com.oficina.domain.exception.InvalidStatusTransitionException;
@@ -33,6 +34,7 @@ import br.com.oficina.domain.model.VehicleSnapshot;
 import br.com.oficina.domain.model.WorkOrder;
 import br.com.oficina.domain.model.WorkOrderStatus;
 import br.com.oficina.testsupport.DomainTestFixtures;
+import br.com.oficina.testsupport.WorkOrderServiceFactory;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -55,14 +57,15 @@ class WorkOrderServiceMetricsTest {
     @Mock ServiceItemRepositoryPort serviceItemRepository;
     @Mock NotificationGatewayPort notificationGateway;
     @Mock BusinessMetricsPort metrics;
+    @Mock WorkOrderHistoryPort history;
 
     WorkOrderService service;
     WorkOrder workOrder;
 
     @BeforeEach
     void setUp() {
-        service = new WorkOrderService(workOrderRepository, clientRepository, vehicleRepository,
-            partRepository, serviceItemRepository, notificationGateway, metrics);
+        service = WorkOrderServiceFactory.withLegacyWorkflow(workOrderRepository, clientRepository,
+            vehicleRepository, partRepository, serviceItemRepository, notificationGateway, metrics, history);
 
         workOrder = new WorkOrder(
             new CustomerSnapshot(1L, "Cliente", "11144477735", "c@x.com"),
