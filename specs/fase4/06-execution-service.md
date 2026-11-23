@@ -50,6 +50,25 @@ do OS **deixam de existir** como entrada do mecânico (ver [07](07-os-service-re
 - `CancelExecution` em tarefa `IN_PROGRESS`: marca `CANCELLED`, preserva as notas (auditoria) e responde `ExecutionCancelled`;
   em tarefa já `FINISHED` responde `ExecutionCancelled` com `alreadyFinished=true` e o OS decide (a Saga trata como erro de negócio → intervenção).
 
+## 4.1 Implementação (2026-11-23, repositório local `../oficina-execution-service`)
+
+- Quarkus 3.15.7 / Java 21, hexagonal (`domain` sem framework). Agregado `ExecutionTask` com transições idempotentes e eventos
+  registrados (`pullEvents`); `ExecutionCommandHandler` despacha por **Strategy** (`EnqueueExecution`, `CancelExecution`,
+  `DiagnosisStarted`); `ExecutionWorkService` atende o mecânico.
+- **Unit of Work** no DynamoDB (`DynamoUnitOfWork`): tarefa (trava otimista pela `version`) + notas + outbox + inbox numa única
+  `TransactWriteItems`; o motivo de cancelamento do item do inbox distingue "mensagem repetida" de "concorrência". Tabela única
+  com GSI1 (fila) e GSI2 esparso (outbox pendente); TTL no inbox e no outbox publicado.
+- Diferenças em relação ao rascunho: SK da tarefa é `TASK#<fase>` (uma tarefa por OS **e fase**); `ExecutionEnqueueFailed` é
+  respondido quando a regra recusa (ex.: reparo já concluído) — a Saga estorna; `CancelExecution` em OS sem reparo confirma.
+- Rotas como no §3, com `?phase=` opcional (padrão `REPAIR`) em `start`/`notes`/`finish`; o responsável é o `sub` do JWT.
+- Entregáveis no repositório: `Dockerfile` (imagem verificada localmente), `k8s/` (1→2 réplicas, só a chave **pública** do JWT,
+  NetworkPolicy com IMDS do ADR 0022), `.github/workflows/ci.yml`, `docker-compose.yml` com LocalStack, `contracts/` (dono de
+  `execution-events.schema.json`; inclui `examples/os-commands.json`), README com a justificativa do NoSQL.
+- **Testes:** 66 (domínio, casos de uso em memória, contrato dos dois lados, LocalStack DynamoDB+SQS, API com JWT real);
+  cobertura 97,3% linhas / 84,9% ramos; gate BUNDLE 80/70 e pacotes de domínio/aplicação 80%.
+- **Pendente:** criar o repositório no GitHub (usuário) e o push; deploy no k3s e o `execution_queue_depth` (gauge) com a
+  infraestrutura da spec 12; BDD de serviço (spec 09).
+
 ## 5. Critérios de aceite
 
 - [ ] Testes de domínio de todas as transições (válidas e inválidas) do `ExecutionTask`.
