@@ -16,7 +16,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 03 | Mensageria e contratos | 🟡 | **OS: contratos, outbox, inbox, relay, consumidor ✅**; lado Billing/Execution; filas reais (F2); continuar o trace no consumo (spec 13) |
 | 04 | Saga orquestrada | 🟡 | **orquestrador, compensações, timeouts e órfãos ✅ (S1, S2, S5–S11 em unidade; S1, S6, S8, cancelamento e timeout em integração)**; S9 (pod morto) na sessão AWS; README |
 | 05 | Billing + Mercado Pago | ⬜ | tudo; **credenciais de teste do Mercado Pago (usuário)** |
-| 06 | Execution Service | 🟡 | **código, testes (66; 97,3%/84,9%), Docker, K8s, CI ✅ em `../oficina-execution-service` (git local)**; criar o repositório no GitHub (usuário) e push; deploy com a infra da spec 12 |
+| 06 | Execution Service | 🟡 | **código, testes (66; 97,3%/84,9%), Docker, K8s, CI ✅ em [`oficina-execution-service`](https://github.com/victor-duarte-mendonca/oficina-execution-service)**; rulesets (usuário); deploy com a infra da spec 12 |
 | 07 | Refatoração do OS | 🟡 | **Strategy de fluxo, transições da Saga, histórico, rotas de Saga, 410 ✅**; `sagaState` público; Postman; V8 |
 | 08 | Testes e cobertura | 🟡 | **OS: gate BUNDLE (80% linhas / 70% ramos) ✅ — 94,0% / 79,6%**; Billing/Execution; ArchUnit |
 | 09 | BDD | 🟡 | **OS: Cucumber S1, S2, S5, S6, S7 ✅ (5 cenários, 74 passos, reprova o build)**; BDD de serviço no Billing/Execution; ponta a ponta com os 3 serviços |
@@ -72,7 +72,9 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 - ✅ Testes: domínio, casos de uso (memória), contrato (produtor e consumidor), **LocalStack DynamoDB + SQS**, API com JWT real
 - ✅ `mvn verify`: 66 testes, **97,3% linhas / 84,9% ramos** (o gate reprovou em 65% de ramos antes dos testes de filtro/payload)
 - ✅ `Dockerfile`, `k8s/` (kustomize hml/prod ok), `ci.yml` (actionlint e shellcheck ok), `docker-compose.yml` com LocalStack, README
-- ⬜ Repositório `oficina-execution-service` no GitHub — **criação é do usuário** (org `victor-duarte-mendonca`, público, rulesets como os demais)
+- ✅ Repositório [`oficina-execution-service`](https://github.com/victor-duarte-mendonca/oficina-execution-service) criado pelo usuário;
+  `main` e `homolog` publicadas (2026-11-23)
+- ⬜ Rulesets de `main`/`homolog` e Environments — **usuário** (como na E0 da Fase 3)
 
 ## Não testado por depender de AWS ou de credenciais
 
@@ -90,8 +92,8 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 ## Próximo passo
 
 1. Usuário: revisar e mergear o PR #37 (BDD + progresso) em `homolog`. O #36 (OS + Saga) já foi mergeado em 2026-11-23.
-2. Usuário: criar o repositório **`oficina-execution-service`** (público, org `victor-duarte-mendonca`) e avisar; o Claude faz o push
-   de `main`, cria `homolog` e o usuário aplica os rulesets/Environments (como na E0 da Fase 3).
+2. Usuário: aplicar os rulesets (PR + squash + checks `build-test`, `docker-build` e `workflow-lint` obrigatórios) e Environments no repositório
+   **`oficina-execution-service`** (já publicado com `main` e `homolog`), como na E0 da Fase 3.
 3. Claude: **spec 05 (Billing)** em `../oficina-billing-service` com o gateway de pagamento fake; o adapter Mercado Pago espera as
    credenciais de teste do usuário.
 
