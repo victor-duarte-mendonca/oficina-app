@@ -16,7 +16,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 03 | Mensageria e contratos | 🟡 | **OS: contratos, outbox, inbox, relay, consumidor ✅**; lado Billing/Execution; filas reais (F2); continuar o trace no consumo (spec 13) |
 | 04 | Saga orquestrada | 🟡 | **orquestrador, compensações, timeouts e órfãos ✅ (S1, S2, S5–S11 em unidade; S1, S6, S8, cancelamento e timeout em integração)**; S9 (pod morto) na sessão AWS; README |
 | 05 | Billing + Mercado Pago | ⬜ | tudo; **credenciais de teste do Mercado Pago (usuário)** |
-| 06 | Execution Service | ⬜ | tudo |
+| 06 | Execution Service | 🟡 | **código, testes (66; 97,3%/84,9%), Docker, K8s, CI ✅ em `../oficina-execution-service` (git local)**; criar o repositório no GitHub (usuário) e push; deploy com a infra da spec 12 |
 | 07 | Refatoração do OS | 🟡 | **Strategy de fluxo, transições da Saga, histórico, rotas de Saga, 410 ✅**; `sagaState` público; Postman; V8 |
 | 08 | Testes e cobertura | 🟡 | **OS: gate BUNDLE (80% linhas / 70% ramos) ✅ — 94,0% / 79,6%**; Billing/Execution; ArchUnit |
 | 09 | BDD | 🟡 | **OS: Cucumber S1, S2, S5, S6, S7 ✅ (5 cenários, 74 passos, reprova o build)**; BDD de serviço no Billing/Execution; ponta a ponta com os 3 serviços |
@@ -62,6 +62,18 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 - ✅ README: seção "BDD — ciclo da OS na Saga" (como rodar e onde está o relatório)
 - ✅ `mvn verify`: **591 testes** (o BDD conta 1, com 5 cenários), cobertura do módulo 94,1% linhas / 79,8% ramos
 
+## Checklist da sessão 12c (repositório local `../oficina-execution-service`, branch `main`)
+
+**Spec 06 — Execution Service**
+- ✅ Domínio `ExecutionTask` (DIAGNOSIS/REPAIR; QUEUED → IN_PROGRESS → FINISHED/FAILED; CANCELLED), comandos da Saga idempotentes
+- ✅ Strategy por comando + Unit of Work atômico no DynamoDB (tarefa com versão, notas, outbox, inbox numa `TransactWriteItems`)
+- ✅ SQS: consumidor que só confirma após gravar; relay do outbox (GSI2 esparso) que para na primeira falha
+- ✅ API `/admin/executions` (ADMIN/MECHANIC), filtro `X-Gateway-Key`, correlação, erros sem stacktrace
+- ✅ Testes: domínio, casos de uso (memória), contrato (produtor e consumidor), **LocalStack DynamoDB + SQS**, API com JWT real
+- ✅ `mvn verify`: 66 testes, **97,3% linhas / 84,9% ramos** (o gate reprovou em 65% de ramos antes dos testes de filtro/payload)
+- ✅ `Dockerfile`, `k8s/` (kustomize hml/prod ok), `ci.yml` (actionlint e shellcheck ok), `docker-compose.yml` com LocalStack, README
+- ⬜ Repositório `oficina-execution-service` no GitHub — **criação é do usuário** (org `victor-duarte-mendonca`, público, rulesets como os demais)
+
 ## Não testado por depender de AWS ou de credenciais
 
 - SQS **real** na conta Academy (só LocalStack) e a permissão do `LabRole` para SQS — sessão AWS (spec 12).
@@ -77,9 +89,11 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 ## Próximo passo
 
-1. Usuário: revisar e mergear o PR #37 (BDD) em `homolog`. O #36 (OS + Saga) já foi mergeado em 2026-11-23.
-2. Claude: **spec 06 (Execution Service)** em `../oficina-execution-service` (pasta local; o usuário cria o repositório no GitHub depois).
-3. Claude: **spec 05 (Billing)** com o gateway de pagamento fake; o adapter Mercado Pago espera as credenciais de teste do usuário.
+1. Usuário: revisar e mergear o PR #37 (BDD + progresso) em `homolog`. O #36 (OS + Saga) já foi mergeado em 2026-11-23.
+2. Usuário: criar o repositório **`oficina-execution-service`** (público, org `victor-duarte-mendonca`) e avisar; o Claude faz o push
+   de `main`, cria `homolog` e o usuário aplica os rulesets/Environments (como na E0 da Fase 3).
+3. Claude: **spec 05 (Billing)** em `../oficina-billing-service` com o gateway de pagamento fake; o adapter Mercado Pago espera as
+   credenciais de teste do usuário.
 
 ## Histórico
 
@@ -88,3 +102,4 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 11 | 2026-11-22 | specs 01–14, ADR 0022, PR #34 (docs) e #35 (fix do Docker no CI) |
 | 12 | 2026-11-23 | OS Service da Fase 4: contratos, V7, Saga, outbox/inbox, histórico, rotas, 590 testes (PR #36) |
 | 12b | 2026-11-23 | Spec 09: BDD da Saga em Cucumber (S1, S2, S5, S6, S7), 591 testes (PR #37; #36 mergeado) |
+| 12c | 2026-11-23 | Spec 06: Execution Service completo em repositório local (DynamoDB, SQS, API, 66 testes, Docker, K8s, CI) |
