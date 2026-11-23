@@ -101,7 +101,7 @@ IP público estável) — a Saga não depende exclusivamente do webhook.
 - **Bug achado nos testes com PostgreSQL:** o Hibernate do Quarkus só rastreia alterações feitas pelos métodos da própria
   entidade; atribuições de campo feitas pelo repositório não eram gravadas (o mapeamento passou para dentro das entidades).
 - **Pendente:** credenciais de teste do Mercado Pago (usuário) e V1–V5; criação do repositório no GitHub (usuário); RDS (D3)
-  e filas (spec 12); OS: não enviar o e-mail de orçamento no fluxo da Saga (hoje sairia um segundo e-mail, sem código).
+  e filas (spec 12). O e-mail de orçamento duplicado no OS foi corrigido no PR #38.
 
 ## 7. Critérios de aceite
 
