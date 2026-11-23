@@ -1,5 +1,6 @@
 package br.com.oficina.interfaces.exception;
 
+import br.com.oficina.application.OperationMovedException;
 import br.com.oficina.application.ports.out.BusinessMetricsPort;
 import br.com.oficina.domain.exception.BusinessException;
 import br.com.oficina.domain.exception.InvalidApprovalTokenException;
@@ -35,6 +36,8 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
             case InvalidApprovalTokenException e -> errorResponse(Response.Status.NOT_FOUND, e.getMessage());
             case BusinessException e -> errorResponse(UNPROCESSABLE_ENTITY,
                 "Unprocessable Entity", e.getMessage());
+            // Fase 4: a operação passou para Billing/Execution; a mensagem aponta a rota substituta.
+            case OperationMovedException e -> errorResponse(Response.Status.GONE, e.getMessage());
             case IllegalArgumentException e -> errorResponse(Response.Status.BAD_REQUEST, e.getMessage());
             case WebApplicationException e -> e.getResponse(); // mantém status nativo (401, 403, etc.)
             default -> handleUnexpected(exception);

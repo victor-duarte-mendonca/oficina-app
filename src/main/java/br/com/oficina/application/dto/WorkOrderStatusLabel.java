@@ -19,6 +19,8 @@ public final class WorkOrderStatusLabel {
             case RECEIVED -> "Recebida";
             case IN_DIAGNOSIS -> "Diagnóstico";
             case AWAITING_APPROVAL -> "Aguardando Aprovação";
+            case AWAITING_PAYMENT -> "Aguardando Pagamento";
+            case AWAITING_EXECUTION -> "Aguardando Execução";
             case IN_EXECUTION -> "Execução";
             case FINISHED -> "Finalizada";
             case DELIVERED -> "Entregue";

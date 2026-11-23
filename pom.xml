@@ -28,6 +28,9 @@
         <!-- Overrides de transitivas do quarkus-mailer (vertx-mail-client -> vertx -> netty) -->
         <netty.version>4.1.137.Final</netty.version>
         <vertx.version>4.5.28</vertx.version>
+        <!-- Fase 4: SQS pelo SDK oficial (sem extensão Quarkiverse: versão compatível com 3.15 não confirmada, spec 03 Q2) -->
+        <awssdk.version>2.59.4</awssdk.version>
+        <json-schema-validator.version>1.5.9</json-schema-validator.version>
     </properties>
 
     <dependencyManagement>
@@ -67,6 +70,13 @@
                 <groupId>io.vertx</groupId>
                 <artifactId>vertx-stack-depchain</artifactId>
                 <version>${vertx.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -164,6 +174,32 @@
             <artifactId>quarkus-mailer</artifactId>
         </dependency>
 
+        <!-- Fase 4 (spec 03): relay do outbox, consumidor das respostas e timeouts da Saga -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-scheduler</artifactId>
+        </dependency>
+        <!-- Cliente SQS com o cliente HTTP do JDK: os clientes Netty/Apache padrão do SDK ficam de fora
+             (imagem menor e sem uma segunda pilha Netty ao lado da do Vert.x). -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sqs</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+        </dependency>
+
         <!-- Jackson for dates -->
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -215,6 +251,19 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jacoco</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Testes de contrato das mensagens (JSON Schema 2020-12) -->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>${json-schema-validator.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- SQS real (LocalStack) no teste do adapter de mensageria; versão vem do BOM do Quarkus -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>localstack</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -340,7 +389,30 @@
                                              passar pelo API Gateway. Regressão aqui abre acesso (E4). -->
                                         <include>br.com.oficina.application.security</include>
                                         <include>br.com.oficina.interfaces.filter</include>
+                                        <!-- Fase 4: a máquina de estados da Saga e a tradução do contrato de
+                                             mensagens. Regressão aqui cobra o cliente duas vezes ou deixa de
+                                             estornar (spec 04). -->
+                                        <include>br.com.oficina.domain.saga</include>
+                                        <include>br.com.oficina.application.messaging</include>
                                     </includes>
+                                </rule>
+                                <!-- R10 da Fase 4: cobertura mínima de 80% do serviço inteiro (spec 08 §2), além
+                                     da regra por pacote acima. Ramos com piso de 70%: adapters finos e mapeamentos
+                                     de configuração têm poucos ramos significativos. -->
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
+                                        </limit>
+                                    </limits>
                                 </rule>
                             </rules>
                         </configuration>

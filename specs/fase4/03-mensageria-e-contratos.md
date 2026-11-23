@@ -68,8 +68,10 @@ Saga** (cliente aprova pelo link) usam o `sagaId` guardado no orçamento.
 
 ## 4. Contratos formais
 
-- Esquemas JSON Schema por mensagem em `contracts/` **no repositório do produtor** (`oficina-app/contracts/commands`,
-  `billing/contracts/events`, ...), versionados com a mensagem. Exemplos válidos e inválidos junto.
+- Esquemas JSON Schema 2020-12 em `contracts/`, **um arquivo por produtor** (`envelope.schema.json`, `os-commands.schema.json`,
+  `billing-events.schema.json`, `execution-events.schema.json`), versionados com as mensagens; exemplos válidos e inválidos em
+  `contracts/examples/`. Enquanto os repositórios do Billing e do Execution não existem, o catálogo inteiro mora no `oficina-app`
+  (implementado em 2026-11-23; ver `contracts/README.md`).
 - **Teste de contrato** em cada lado: o produtor valida suas mensagens contra o schema; o consumidor valida os exemplos do schema
   do produtor (cópia sincronizada por script `scripts/sync-contracts.sh`, falha no CI se divergir). Não há repositório de contratos
   separado (exigiria um 6º repositório).
@@ -88,8 +90,17 @@ Saga** (cliente aprova pelo link) usam o `sagaId` guardado no orçamento.
 
 **Consumo** (verificação Q1: não há conector SmallRye Reactive Messaging para SQS na doc lida): *poller* próprio — componente de infraestrutura
 `SqsPoller` (virtual threads, long polling, `DeleteMessage` só após o `commit` do tratamento); isolado atrás de
-`MessageConsumerPort` para o domínio não conhecer SQS. A extensão `quarkus-amazon-sqs` (Quarkiverse; **versão compatível com
-Quarkus 3.15.7 a confirmar no spike da F2 — verificação Q2**; a doc da linha 3.15.x existe, mas não declara a versão da extensão) fornece o cliente; endpoint de teste via `quarkus.sqs.endpoint-override`.
+`MessageConsumerPort` para o domínio não conhecer SQS.
+
+> **Implementado (2026-11-23).** Q2 resolvida evitando a dependência: o OS usa o **AWS SDK v2 oficial** (`software.amazon.awssdk:sqs`
+> 2.59.4, cliente HTTP do JDK `url-connection-client`, sem Netty/Apache) em vez da extensão Quarkiverse, cuja versão compatível
+> com Quarkus 3.15 não foi confirmada. Peças: `MessageTransport` (porta interna da infraestrutura) → `SqsMessageTransport`;
+> `OutboxPublisher` (lote com `FOR UPDATE SKIP LOCKED`, para na primeira falha para não furar a ordem por OS); `SagaReplyConsumer`
+> (confirma só após o `commit`); `SagaJobs` (`quarkus-scheduler`: relay 1 s, respostas 1 s, prazos 10 s; pulados com a
+> mensageria/Saga desligada). A porta de entrada é `HandleSagaMessageUseCase` (não há `MessageConsumerPort` separada). Endpoint
+> de teste por `app.messaging.endpoint-override` (LocalStack 3.8.1 no `SqsMessageTransportTest`). Configuração: `app.messaging.*`
+> e `SQS_*_URL`. **Pendente:** extrair o `traceparent` no consumo para continuar o trace (spec 13 §1; hoje ele já é gravado na
+> publicação).
 
 ## 6. Síncrono × assíncrono (texto para o README)
 

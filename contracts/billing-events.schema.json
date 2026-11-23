@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oficina.local/contracts/billing-events.schema.json",
+  "title": "Eventos produzidos pelo Billing Service (respostas da Saga)",
+  "allOf": [
+    { "$ref": "envelope.schema.json" },
+    {
+      "required": ["sagaId"],
+      "properties": {
+        "kind": { "const": "EVENT" },
+        "sagaId": { "type": "string" },
+        "type": { "enum": ["BudgetGenerated", "BudgetGenerationFailed", "BudgetApproved", "BudgetRejected", "BudgetExpired", "BudgetVoided", "PaymentRequested", "PaymentRequestFailed", "PaymentApproved", "PaymentRejected", "PaymentExpired", "PaymentRefunded", "PaymentRefundFailed"] }
+      }
+    },
+    { "if": { "properties": { "type": { "const": "BudgetGenerated" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/BudgetGenerated" } } } },
+    { "if": { "properties": { "type": { "const": "BudgetGenerationFailed" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/Failure" } } } },
+    { "if": { "properties": { "type": { "const": "BudgetApproved" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/BudgetDecision" } } } },
+    { "if": { "properties": { "type": { "const": "BudgetRejected" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/BudgetDecision" } } } },
+    { "if": { "properties": { "type": { "const": "BudgetExpired" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/BudgetRef" } } } },
+    { "if": { "properties": { "type": { "const": "BudgetVoided" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/BudgetRef" } } } },
+    { "if": { "properties": { "type": { "const": "PaymentRequested" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/PaymentRequested" } } } },
+    { "if": { "properties": { "type": { "const": "PaymentRequestFailed" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/Failure" } } } },
+    { "if": { "properties": { "type": { "const": "PaymentApproved" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/PaymentApproved" } } } },
+    { "if": { "properties": { "type": { "const": "PaymentRejected" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/PaymentDetail" } } } },
+    { "if": { "properties": { "type": { "const": "PaymentExpired" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/PaymentRef" } } } },
+    { "if": { "properties": { "type": { "const": "PaymentRefunded" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/PaymentRef" } } } },
+    { "if": { "properties": { "type": { "const": "PaymentRefundFailed" } } }, "then": { "properties": { "payload": { "$ref": "#/$defs/PaymentDetail" } } } }
+  ],
+  "$defs": {
+    "BudgetRef": {
+      "type": "object", "required": ["budgetId"], "additionalProperties": false,
+      "properties": { "budgetId": { "type": "string", "minLength": 1 } }
+    },
+    "BudgetGenerated": {
+      "type": "object", "required": ["budgetId", "total", "expiresAt"], "additionalProperties": false,
+      "properties": {
+        "budgetId": { "type": "string", "minLength": 1 },
+        "total": { "$ref": "envelope.schema.json#/$defs/money" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "BudgetDecision": {
+      "type": "object", "required": ["budgetId", "by"], "additionalProperties": false,
+      "properties": {
+        "budgetId": { "type": "string", "minLength": 1 },
+        "by": { "enum": ["CLIENT_TOKEN", "CLIENT_JWT", "STAFF"] }
+      }
+    },
+    "PaymentRef": {
+      "type": "object", "required": ["paymentId"], "additionalProperties": false,
+      "properties": { "paymentId": { "type": "string", "minLength": 1 } }
+    },
+    "PaymentRequested": {
+      "type": "object", "required": ["paymentId", "expiresAt"], "additionalProperties": false,
+      "properties": {
+        "paymentId": { "type": "string", "minLength": 1 },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "PaymentApproved": {
+      "type": "object", "required": ["paymentId", "amount"], "additionalProperties": false,
+      "properties": {
+        "paymentId": { "type": "string", "minLength": 1 },
+        "amount": { "$ref": "envelope.schema.json#/$defs/money" }
+      }
+    },
+    "PaymentDetail": {
+      "type": "object", "required": ["paymentId", "detail"], "additionalProperties": false,
+      "properties": {
+        "paymentId": { "type": "string", "minLength": 1 },
+        "detail": { "$ref": "envelope.schema.json#/$defs/reason" }
+      }
+    },
+    "Failure": {
+      "type": "object", "required": ["reason"], "additionalProperties": false,
+      "properties": { "reason": { "$ref": "envelope.schema.json#/$defs/reason" } }
+    }
+  }
+}

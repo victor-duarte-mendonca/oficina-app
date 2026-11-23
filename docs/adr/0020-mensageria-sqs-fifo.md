@@ -15,6 +15,10 @@ orçamento do Academy é limitado.
 `MessageGroupId = workOrderId` preserva a ordem por OS. REST síncrono permanece para o tráfego cliente → gateway → serviço e para
 consultas pontuais. Local/CI: LocalStack ou ElasticMQ via Docker. `traceparent` e `correlationId` viajam como atributos da mensagem.
 
+**Cliente (implementação, 2026-11-23):** AWS SDK v2 oficial (`software.amazon.awssdk:sqs`, cliente HTTP do JDK), não a extensão
+Quarkiverse — a versão compatível com Quarkus 3.15 não foi confirmada e o SDK direto deixa a versão sob nosso controle. Consumo
+por *poller* agendado (`quarkus-scheduler`), já que não há conector SmallRye Reactive Messaging para SQS.
+
 ## Consequências
 
 - (+) Gerenciado, sem pod, sem memória no nó e sem custo ocioso relevante.

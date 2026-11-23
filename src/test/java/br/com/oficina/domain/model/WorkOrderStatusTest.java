@@ -10,6 +10,8 @@ class WorkOrderStatusTest {
     void activeByPriority_shouldFollowTheOrderRequiredByTheBusiness() {
         assertThat(WorkOrderStatus.activeByPriority()).containsExactly(
             WorkOrderStatus.IN_EXECUTION,
+            WorkOrderStatus.AWAITING_EXECUTION,
+            WorkOrderStatus.AWAITING_PAYMENT,
             WorkOrderStatus.AWAITING_APPROVAL,
             WorkOrderStatus.IN_DIAGNOSIS,
             WorkOrderStatus.RECEIVED);
@@ -53,7 +55,7 @@ class WorkOrderStatusTest {
     @Test
     void constantNames_areAPersistenceContract() {
         assertThat(WorkOrderStatus.values()).extracting(Enum::name).containsExactlyInAnyOrder(
-            "RECEIVED", "IN_DIAGNOSIS", "AWAITING_APPROVAL", "IN_EXECUTION",
-            "FINISHED", "DELIVERED", "CANCELLED");
+            "RECEIVED", "IN_DIAGNOSIS", "AWAITING_APPROVAL", "AWAITING_PAYMENT", "AWAITING_EXECUTION",
+            "IN_EXECUTION", "FINISHED", "DELIVERED", "CANCELLED");
     }
 }

@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oficina.local/contracts/os-commands.schema.json",
+  "title": "Mensagens produzidas pelo OS Service (comandos da Saga e informativos)",
+  "allOf": [
+    { "$ref": "envelope.schema.json" },
+    {
+      "properties": {
+        "type": { "enum": ["GenerateBudget", "RequestPayment", "VoidBudget", "RefundPayment", "EnqueueExecution", "CancelExecution", "DiagnosisStarted"] }
+      }
+    },
+    { "if": { "properties": { "type": { "const": "GenerateBudget" } } }, "then": { "required": ["sagaId"], "properties": { "kind": { "const": "COMMAND" }, "sagaId": { "type": "string" }, "payload": { "$ref": "#/$defs/GenerateBudget" } } } },
+    { "if": { "properties": { "type": { "const": "RequestPayment" } } }, "then": { "required": ["sagaId"], "properties": { "kind": { "const": "COMMAND" }, "sagaId": { "type": "string" }, "payload": { "$ref": "#/$defs/RequestPayment" } } } },
+    { "if": { "properties": { "type": { "const": "VoidBudget" } } }, "then": { "required": ["sagaId"], "properties": { "kind": { "const": "COMMAND" }, "sagaId": { "type": "string" }, "payload": { "$ref": "#/$defs/VoidBudget" } } } },
+    { "if": { "properties": { "type": { "const": "RefundPayment" } } }, "then": { "required": ["sagaId"], "properties": { "kind": { "const": "COMMAND" }, "sagaId": { "type": "string" }, "payload": { "$ref": "#/$defs/RefundPayment" } } } },
+    { "if": { "properties": { "type": { "const": "EnqueueExecution" } } }, "then": { "required": ["sagaId"], "properties": { "kind": { "const": "COMMAND" }, "sagaId": { "type": "string" }, "payload": { "$ref": "#/$defs/EnqueueExecution" } } } },
+    { "if": { "properties": { "type": { "const": "CancelExecution" } } }, "then": { "required": ["sagaId"], "properties": { "kind": { "const": "COMMAND" }, "sagaId": { "type": "string" }, "payload": { "$ref": "#/$defs/CancelExecution" } } } },
+    { "if": { "properties": { "type": { "const": "DiagnosisStarted" } } }, "then": { "properties": { "kind": { "const": "INFO" }, "payload": { "$ref": "#/$defs/DiagnosisStarted" } } } }
+  ],
+  "$defs": {
+    "GenerateBudget": {
+      "type": "object",
+      "required": ["clientId", "customer", "items", "total", "approvalTtlSeconds"],
+      "additionalProperties": false,
+      "properties": {
+        "clientId": { "type": "integer", "minimum": 1 },
+        "customer": {
+          "type": "object",
+          "required": ["name"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "email": { "type": ["string", "null"], "format": "email" }
+          }
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "refId", "name", "quantity", "unitPrice"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "$ref": "envelope.schema.json#/$defs/itemKind" },
+              "refId": { "type": "integer", "minimum": 1 },
+              "name": { "type": "string", "minLength": 1 },
+              "quantity": { "type": "integer", "minimum": 1 },
+              "unitPrice": { "$ref": "envelope.schema.json#/$defs/money" }
+            }
+          }
+        },
+        "total": { "$ref": "envelope.schema.json#/$defs/money" },
+        "approvalTtlSeconds": { "type": "integer", "minimum": 60 }
+      }
+    },
+    "RequestPayment": {
+      "type": "object",
+      "required": ["budgetId", "amount", "attempt"],
+      "additionalProperties": false,
+      "properties": {
+        "budgetId": { "type": "string", "minLength": 1 },
+        "amount": { "$ref": "envelope.schema.json#/$defs/money" },
+        "attempt": { "type": "integer", "minimum": 1, "description": "Mesma tentativa reenviada = mesma chave de idempotência no Billing." }
+      }
+    },
+    "VoidBudget": {
+      "type": "object",
+      "required": ["budgetId", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "budgetId": { "type": "string", "minLength": 1 },
+        "reason": { "$ref": "envelope.schema.json#/$defs/reason" }
+      }
+    },
+    "RefundPayment": {
+      "type": "object",
+      "required": ["paymentId", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "paymentId": { "type": "string", "minLength": 1 },
+        "reason": { "$ref": "envelope.schema.json#/$defs/reason" }
+      }
+    },
+    "EnqueueExecution": {
+      "type": "object",
+      "required": ["vehicle", "items", "priority"],
+      "additionalProperties": false,
+      "properties": {
+        "vehicle": { "$ref": "envelope.schema.json#/$defs/vehicle" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "name", "quantity"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "$ref": "envelope.schema.json#/$defs/itemKind" },
+              "name": { "type": "string", "minLength": 1 },
+              "quantity": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "priority": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "CancelExecution": {
+      "type": "object",
+      "required": ["reason"],
+      "additionalProperties": false,
+      "properties": { "reason": { "$ref": "envelope.schema.json#/$defs/reason" } }
+    },
+    "DiagnosisStarted": {
+      "type": "object",
+      "required": ["vehicle"],
+      "additionalProperties": false,
+      "properties": {
+        "vehicle": { "$ref": "envelope.schema.json#/$defs/vehicle" },
+        "notes": { "type": ["string", "null"], "maxLength": 500 }
+      }
+    }
+  }
+}

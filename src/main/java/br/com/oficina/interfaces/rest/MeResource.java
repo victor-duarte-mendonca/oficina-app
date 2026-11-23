@@ -3,9 +3,11 @@ package br.com.oficina.interfaces.rest;
 import br.com.oficina.application.dto.ApprovalDecisionDto;
 import br.com.oficina.application.dto.ClientResponseDto;
 import br.com.oficina.application.dto.ClientWorkOrderRequestDto;
+import br.com.oficina.application.dto.StatusHistoryEntryDto;
 import br.com.oficina.application.dto.VehicleResponseDto;
 import br.com.oficina.application.dto.WorkOrderResponseDto;
 import br.com.oficina.application.ports.in.ClientSelfServiceUseCase;
+import br.com.oficina.application.ports.in.WorkOrderHistoryUseCase;
 import br.com.oficina.application.security.AuthenticatedCaller;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -39,10 +41,12 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class MeResource {
 
     private final ClientSelfServiceUseCase selfService;
+    private final WorkOrderHistoryUseCase history;
     private final CallerResolver callers;
 
-    public MeResource(ClientSelfServiceUseCase selfService, CallerResolver callers) {
+    public MeResource(ClientSelfServiceUseCase selfService, WorkOrderHistoryUseCase history, CallerResolver callers) {
         this.selfService = selfService;
+        this.history = history;
         this.callers = callers;
     }
 
@@ -77,6 +81,14 @@ public class MeResource {
                description = "404 (e não 403) se a OS pertencer a outro cliente, para não revelar que o id existe.")
     public WorkOrderResponseDto findWorkOrder(@PathParam("id") Long id) {
         return selfService.findWorkOrder(callers.resolve(), id);
+    }
+
+    @GET
+    @Path("/work-orders/{id}/history")
+    @Operation(summary = "Histórico de status de uma OS do cliente",
+               description = "404 (e não 403) se a OS pertencer a outro cliente. Não expõe o nome do funcionário.")
+    public List<StatusHistoryEntryDto> history(@PathParam("id") Long id) {
+        return history.historyForClient(callers.resolve(), id);
     }
 
     @POST

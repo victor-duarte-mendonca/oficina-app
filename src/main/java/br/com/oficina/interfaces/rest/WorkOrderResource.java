@@ -5,6 +5,8 @@ import br.com.oficina.application.ports.in.ChangeWorkOrderStatusUseCase;
 import br.com.oficina.application.ports.in.CreateWorkOrderUseCase;
 import br.com.oficina.application.ports.in.ListWorkOrdersUseCase;
 import br.com.oficina.application.ports.in.ManageWorkOrderItemsUseCase;
+import br.com.oficina.application.ports.in.SagaAdministrationUseCase;
+import br.com.oficina.application.ports.in.WorkOrderHistoryUseCase;
 import br.com.oficina.domain.model.WorkOrderStatus;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -32,15 +34,21 @@ public class WorkOrderResource {
     private final ListWorkOrdersUseCase listWorkOrders;
     private final ManageWorkOrderItemsUseCase manageItems;
     private final ChangeWorkOrderStatusUseCase changeStatus;
+    private final WorkOrderHistoryUseCase history;
+    private final SagaAdministrationUseCase sagas;
 
     public WorkOrderResource(CreateWorkOrderUseCase createWorkOrder,
                              ListWorkOrdersUseCase listWorkOrders,
                              ManageWorkOrderItemsUseCase manageItems,
-                             ChangeWorkOrderStatusUseCase changeStatus) {
+                             ChangeWorkOrderStatusUseCase changeStatus,
+                             WorkOrderHistoryUseCase history,
+                             SagaAdministrationUseCase sagas) {
         this.createWorkOrder = createWorkOrder;
         this.listWorkOrders = listWorkOrders;
         this.manageItems = manageItems;
         this.changeStatus = changeStatus;
+        this.history = history;
+        this.sagas = sagas;
     }
 
     @GET
@@ -73,6 +81,23 @@ public class WorkOrderResource {
     @Operation(summary = "Buscar OS por ID")
     public WorkOrderResponseDto findById(@PathParam("id") Long id) {
         return listWorkOrders.findById(id);
+    }
+
+    @GET
+    @Path("/{id}/history")
+    @Operation(summary = "Histórico de status da OS",
+               description = "Todas as transições, da abertura ao estado atual, com origem (USER, SAGA, SYSTEM), "
+                             + "motivo, responsável e correlationId.")
+    public List<StatusHistoryEntryDto> history(@PathParam("id") Long id) {
+        return history.history(id);
+    }
+
+    @GET
+    @Path("/{id}/saga")
+    @Operation(summary = "Saga mais recente da OS",
+               description = "Estado da Saga, compensações pendentes e o log de passos (fluxo orquestrado da Fase 4).")
+    public SagaViewDto saga(@PathParam("id") Long id) {
+        return sagas.findLatestForWorkOrder(id);
     }
 
     @GET

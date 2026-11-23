@@ -20,10 +20,14 @@ enfraquece "banco e infraestrutura próprios"). O restante desta spec vale nos d
 |---|---|
 | `work_orders.status` | CHECK ampliado com `AWAITING_PAYMENT` e `AWAITING_EXECUTION` (ver [07](07-os-service-refatoracao.md) §2) |
 | `work_order_status_history` | `id`, `work_order_id` FK, `from_status`, `to_status`, `occurred_at`, `source` (`USER`/`SAGA`/`SYSTEM`), `actor`, `reason`, `correlation_id`. Índice `(work_order_id, occurred_at)`. Atende "consulta de status e histórico" |
-| `saga_instance` | `id` (UUID = `sagaId`), `work_order_id` UNIQUE parcial onde `state` não-terminal, `state`, `step`, `attempt`, `deadline_at`, `context` JSONB (ids de orçamento/pagamento), `version` (otimista), `created_at`, `updated_at` |
-| `saga_step_log` | `id`, `saga_id` FK, `step`, `direction` (`FORWARD`/`COMPENSATE`), `message_id`, `outcome`, `detail`, `occurred_at` — trilha de auditoria usada no vídeo |
-| `outbox` | `id`, `message_group_id`, `message_type`, `payload` JSONB, `headers` JSONB, `created_at`, `published_at` NULL; índice parcial `WHERE published_at IS NULL` |
-| `inbox` | `message_id` PK, `consumer`, `processed_at` — deduplicação de consumidor |
+| `saga_instance` | `id` (UUID = `sagaId`), `work_order_id` (UNIQUE parcial onde `state` não-terminal), `state`, `compensations` (pilha, topo primeiro, texto `REFUND_PAYMENT,VOID_BUDGET`), `step_attempts`, `payment_attempts`, `budget_id`, `payment_id`, `payment_captured`, `deadline_at` (índice parcial), `failure_reason`, `version` (otimista), `created_at`, `updated_at` |
+| `saga_step_log` | `id`, `saga_id` FK, `step` (tipo do evento ou gatilho), `message_id`, `outcome`, `state_after`, `detail`, `occurred_at` — trilha de auditoria usada no vídeo |
+| `outbox` | `id` (= `messageId`, chave de deduplicação do SQS), `destination`, `message_group_id`, `message_type`, `payload` JSONB (envelope completo), `created_at`, `published_at` NULL, `attempts`, `last_error`; índice parcial `WHERE published_at IS NULL` |
+| `inbox` | PK (`message_id`, `consumer`), `processed_at` — deduplicação de consumidor (`INSERT ... ON CONFLICT DO NOTHING`) |
+
+> **Implementado (2026-11-23, `V7__phase4_saga_outbox_history.sql`).** Diferenças em relação ao rascunho: colunas explícitas no lugar de
+> `context` JSONB (consultáveis e legíveis na demonstração); a pilha de compensações é texto ordenado; o histórico é **reconstruído**
+> para as OS existentes a partir dos `*_at` (backfill `source=SYSTEM`).
 | Remoções | `approval_token*` saem de `work_orders` **depois** que o Billing assumir (migration V8, em outra etapa, nunca na mesma V7) |
 
 Regras: V7 é **aditiva e retrocompatível** (a versão anterior da app continua funcionando contra o schema novo — requisito do
@@ -65,8 +69,9 @@ a inbox + outbox do SQL. Concorrência: `version` com `ConditionExpression`.
 - OS: Flyway (V7 agora; V8 limpa o token de aprovação quando o Billing for o dono).
 - Billing: Flyway próprio (`V1__baseline.sql`), executado pela app no startup (mesma política do ADR 0014).
 - Execution: sem migrations; mudanças de atributo são aditivas e versionadas por `schemaVersion` no item.
-- Dados existentes (OS em andamento): nenhuma migração para Billing/Execution — OS criadas **antes** da V7 terminam o ciclo
-  pelo caminho legado (`saga_instance` ausente = fluxo antigo); o seed de demonstração cria OS já no modelo novo.
+- Dados existentes (OS em andamento): nenhuma migração para Billing/Execution — OS **sem `saga_instance`** terminam o ciclo
+  pelo caminho legado (detectado pela ausência de Saga; não foi preciso uma coluna `legacy_flow`); o seed de demonstração cria OS
+  já no modelo novo.
 
 ## 6. Critérios de aceite
 

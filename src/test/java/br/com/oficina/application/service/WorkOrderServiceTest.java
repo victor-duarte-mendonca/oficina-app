@@ -13,8 +13,10 @@ import br.com.oficina.application.ports.out.NotificationGatewayPort;
 import br.com.oficina.application.ports.out.PartRepositoryPort;
 import br.com.oficina.application.ports.out.ServiceItemRepositoryPort;
 import br.com.oficina.application.ports.out.VehicleRepositoryPort;
+import br.com.oficina.application.ports.out.WorkOrderHistoryPort;
 import br.com.oficina.application.ports.out.WorkOrderRepositoryPort;
 import br.com.oficina.testsupport.DomainTestFixtures;
+import br.com.oficina.testsupport.WorkOrderServiceFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,8 +41,8 @@ class WorkOrderServiceTest {
     @Mock ServiceItemRepositoryPort serviceItemRepository;
     @Mock NotificationGatewayPort notificationGateway;
     @Mock BusinessMetricsPort metrics;
+    @Mock WorkOrderHistoryPort history;
 
-    @InjectMocks
     WorkOrderService workOrderService;
 
     private Client client;
@@ -51,6 +53,9 @@ class WorkOrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        workOrderService = WorkOrderServiceFactory.withLegacyWorkflow(workOrderRepository, clientRepository,
+            vehicleRepository, partRepository, serviceItemRepository, notificationGateway, metrics, history);
+
         client = new Client("Cliente Teste", "11144477735", ClientType.PF, null, null);
         DomainTestFixtures.setId(client, 1L);
 

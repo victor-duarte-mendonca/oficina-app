@@ -7,8 +7,8 @@ import java.util.List;
 /**
  * Estados da Ordem de Serviço.
  *
- * <p>A ordem de exibição da fila de trabalho ({@code IN_EXECUTION >
- * AWAITING_APPROVAL > IN_DIAGNOSIS > RECEIVED}) é regra de negócio e por isso
+ * <p>A ordem de exibição da fila de trabalho ({@code IN_EXECUTION > AWAITING_EXECUTION >
+ * AWAITING_PAYMENT > AWAITING_APPROVAL > IN_DIAGNOSIS > RECEIVED}) é regra de negócio e por isso
  * mora aqui, não numa string de consulta no adapter de persistência: assim ela é
  * testável sem banco e existe uma única fonte da verdade para qualquer adapter
  * que precise ordenar a fila.</p>
@@ -23,9 +23,12 @@ import java.util.List;
  */
 public enum WorkOrderStatus {
 
-    RECEIVED(3, false),
-    IN_DIAGNOSIS(2, false),
-    AWAITING_APPROVAL(1, false),
+    RECEIVED(5, false),
+    IN_DIAGNOSIS(4, false),
+    AWAITING_APPROVAL(3, false),
+    // Fase 4 (Saga): orçamento aprovado com Pix emitido, e pago aguardando vaga na fila de execução.
+    AWAITING_PAYMENT(2, false),
+    AWAITING_EXECUTION(1, false),
     IN_EXECUTION(0, false),
     // Prioridade 99 = terminal; nunca chega a ser usada na ordenação, já que
     // esses estados são filtrados antes. Existe só para manter o campo total.

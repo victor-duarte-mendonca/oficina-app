@@ -34,7 +34,7 @@
 | Rota da Fase 3 | Fase 4 | Observação |
 |---|---|---|
 | `PATCH /admin/work-orders/{id}/start-diagnosis` | **mantida**; também publica `DiagnosisStarted` (INFO) | |
-| `PATCH /admin/work-orders/{id}/send-for-approval` | **mantida**, mas **assíncrona**: devolve `202`/OS em `IN_DIAGNOSIS` com `saga` em `BUDGET_REQUESTED`; vira `AWAITING_APPROVAL` ao chegar `BudgetGenerated` | muda o contrato (era síncrono): Postman e README atualizados |
+| `PATCH /admin/work-orders/{id}/send-for-approval` | **mantida**, com o mesmo contrato (200): a OS vai **na hora** para `AWAITING_APPROVAL` (deixa de ser editável) e a Saga começa em `BUDGET_REQUESTED`; se o Billing não gerar o orçamento, a Saga devolve a OS a `IN_DIAGNOSIS` | decisão da implementação: evita uma janela em que a OS seguiria editável com um orçamento já pedido |
 | `PATCH /{id}/approve`, `/{id}/reject` (ADMIN) | **removidas**; equivalentes em `POST /admin/budgets/{orderNumber}/approve\|reject` (Billing) | responder `410 Gone` por 1 versão com ponteiro |
 | `POST /me/work-orders/{id}/approval` | **removida**; equivalente `POST /me/budgets/{orderNumber}/approval` (Billing) | idem |
 | `POST/GET /public/work-orders/{orderNumber}/approve\|reject` (token) | **removidas**; equivalente `/public/budgets/{orderNumber}/approve\|reject` (Billing) | |
@@ -61,8 +61,16 @@ Transações: cada resposta processada em **uma** transação (`inbox` + transi�
 
 ## 5. Migração do fluxo legado
 
-OS sem `saga_instance` terminam pelo caminho antigo (flag no agregado `legacy_flow=true`, preenchida pela V7 em OS não
-terminais); novas OS usam a Saga. Após a Fase 4 validada, o caminho legado é removido (V8) — **não** na mesma entrega.
+OS sem `saga_instance` terminam pelo caminho antigo; novas OS usam a Saga. Após a Fase 4 validada, o caminho legado é removido
+(V8) — **não** na mesma entrega.
+
+> **Implementado (2026-11-23).** O fluxo é um **Strategy** (`ApprovalWorkflow`): `LegacyApprovalWorkflow` (Fase 3) e
+> `SagaApprovalWorkflow` (Fase 4), escolhido por `app.saga.enabled` (`APP_SAGA_ENABLED`, **desligado por padrão** até Billing e
+> Execution estarem no ar) em `SagaBeans`. Com a Saga ligada, OS sem Saga continuam aceitando as decisões diretas (detecção pela
+> ausência de Saga, sem coluna `legacy_flow`); OS com Saga respondem **410** com a rota substituta em `approve`, `reject`,
+> `complete` e na aprovação por token. Extraídos do `WorkOrderService`: `WorkOrderTransitions` (transição + histórico + métricas
+> num só lugar), `WorkOrderStock` (devolução de estoque, compensação local) e `StatusNotifier`.
+> **Pendente nesta spec:** `sagaState` público em `/public/work-orders/{n}/status`; Postman atualizado; V8 (remoção do token local).
 
 ## 6. Critérios de aceite
 
