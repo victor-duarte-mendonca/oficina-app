@@ -66,6 +66,22 @@ testes de componente/unidade ou cenários extras conforme o tempo.
 - Falhas injetadas pelos *stubs* (`Quando o Billing falha ao gerar o orçamento`), não por mocks espalhados.
 - O mesmo vocabulário alimenta o roteiro do vídeo (responsabilidade do usuário): S1 e S6 são as demonstrações.
 
+## 4.1 Implementação (2026-11-23)
+
+- **Cucumber-JVM 7.34.7** (`cucumber-java`), executado **por dentro** de um `@QuarkusTest` (`SagaBddTest` chama
+  `io.cucumber.core.cli.Main`), em vez do engine JUnit Platform do Cucumber: os passos usam a aplicação real (casos de uso,
+  PostgreSQL do teste, perfil `SagaEnabledProfile`) sem depender da extensão Quarkiverse de Cucumber.
+- Feature única `src/test/resources/features/saga/ciclo-da-ordem-de-servico.feature` com **S1, S2, S5, S6 e S7** (5 cenários, 74 passos).
+- Passos por papel: `OficinaSteps` (ações e o que a oficina vê) e `ParticipantesSteps` (Billing e Execution simulados: conferem o
+  comando enviado e respondem pelo contrato). Estado por cenário em `SagaWorld` (criado/limpo por hooks, já que o `ObjectFactory`
+  padrão não injeta dependências). Valores em reais com o tipo `{dinheiro}` (`R$ 329,80`).
+- O mesmo `SagaScenario` (fixture em `testsupport/`) é usado pelo `SagaFlowIntegrationTest`, que mantém as verificações técnicas
+  (duplicidade, timeout, tipo desconhecido).
+- Relatórios em `target/cucumber-reports/saga.{html,json}`. **Verificado** que um passo indefinido e uma expectativa errada
+  reprovam o `mvn verify` (`1 undefined, 1 failed`).
+- **Pendente (fora do OS):** BDD de serviço no Billing e no Execution; BDD ponta a ponta com os 3 serviços e LocalStack no
+  `docker compose`; os mesmos cenários via gateway na sessão AWS.
+
 ## 5. Critérios de aceite
 
 - [ ] `mvn verify` executa os `.feature` e **falha** se um cenário falhar ou ficar `undefined`/`pending`.

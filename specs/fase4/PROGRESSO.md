@@ -19,7 +19,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 06 | Execution Service | ⬜ | tudo |
 | 07 | Refatoração do OS | 🟡 | **Strategy de fluxo, transições da Saga, histórico, rotas de Saga, 410 ✅**; `sagaState` público; Postman; V8 |
 | 08 | Testes e cobertura | 🟡 | **OS: gate BUNDLE (80% linhas / 70% ramos) ✅ — 94,0% / 79,6%**; Billing/Execution; ArchUnit |
-| 09 | BDD | ⬜ | Cucumber S1, S2, S5, S6, S7 (a base já existe: `SagaFlowIntegrationTest`) |
+| 09 | BDD | 🟡 | **OS: Cucumber S1, S2, S5, S6, S7 ✅ (5 cenários, 74 passos, reprova o build)**; BDD de serviço no Billing/Execution; ponta a ponta com os 3 serviços |
 | 10 | SonarCloud | ⬜ | **organização e `SONAR_TOKEN` (usuário)** |
 | 11 | CI/CD por serviço | ⬜ | pipelines dos repos novos; checks novos no ruleset |
 | 12 | Infra (SQS, DynamoDB, RDS, gateway, IMDS) | ⬜ | Terraform; spike de capacidade do nó; **sessão AWS (usuário)** |
@@ -52,6 +52,16 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 **Suíte:** `mvn verify` **590 testes verdes** (eram 431), gate por pacote + BUNDLE atendidos.
 
+## Checklist da sessão 12b (branch `feature/f4-bdd-saga`, empilhada sobre `feature/f4-os-saga`)
+
+**Spec 09 — BDD**
+- ✅ `features/saga/ciclo-da-ordem-de-servico.feature` (pt-BR): S1 fluxo completo, S2 recusa, S5 Pix esgotado, S6 falha com estorno, S7 estorno recusado → intervenção
+- ✅ Cucumber 7.34.7 rodando dentro do `@QuarkusTest` (`SagaBddTest`): aplicação, PostgreSQL e perfil reais; Billing/Execution simulados pelo contrato
+- ✅ Prova negativa: passo indefinido e expectativa errada reprovam o `mvn verify`
+- ✅ Fixture `SagaScenario` compartilhado com o `SagaFlowIntegrationTest` (sem duplicação de montagem)
+- ✅ README: seção "BDD — ciclo da OS na Saga" (como rodar e onde está o relatório)
+- ✅ `mvn verify`: **591 testes** (o BDD conta 1, com 5 cenários), cobertura do módulo 94,1% linhas / 79,8% ramos
+
 ## Não testado por depender de AWS ou de credenciais
 
 - SQS **real** na conta Academy (só LocalStack) e a permissão do `LabRole` para SQS — sessão AWS (spec 12).
@@ -67,14 +77,15 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 ## Próximo passo
 
-1. Usuário: revisar e mergear o PR de `feature/f4-os-saga` em `homolog` (só o OS; Saga desligada por padrão — nada muda em produção).
-2. Claude: **spec 09 (BDD)** sobre o `SagaFlowIntegrationTest` (Cucumber, S1/S2/S5/S6/S7) — só depende do OS.
-3. Claude: **spec 06 (Execution Service)** em `../oficina-execution-service` (pasta local; o usuário cria o repositório no GitHub depois).
-4. Claude: **spec 05 (Billing)** com o gateway de pagamento fake; o adapter Mercado Pago espera as credenciais de teste do usuário.
+1. Usuário: mergear o PR #36 (`feature/f4-os-saga`) em `homolog` e **avisar o Claude**, que religa a base do PR do BDD
+   (`feature/f4-bdd-saga`, empilhado) com `rebase --onto`. Não fazer `git pull` na branch empilhada.
+2. Claude: **spec 06 (Execution Service)** em `../oficina-execution-service` (pasta local; o usuário cria o repositório no GitHub depois).
+3. Claude: **spec 05 (Billing)** com o gateway de pagamento fake; o adapter Mercado Pago espera as credenciais de teste do usuário.
 
 ## Histórico
 
 | Sessão | Data | Feito |
 |---|---|---|
 | 11 | 2026-11-22 | specs 01–14, ADR 0022, PR #34 (docs) e #35 (fix do Docker no CI) |
-| 12 | 2026-11-23 | OS Service da Fase 4: contratos, V7, Saga, outbox/inbox, histórico, rotas, 590 testes |
+| 12 | 2026-11-23 | OS Service da Fase 4: contratos, V7, Saga, outbox/inbox, histórico, rotas, 590 testes (PR #36) |
+| 12b | 2026-11-23 | Spec 09: BDD da Saga em Cucumber (S1, S2, S5, S6, S7), 591 testes (PR empilhado sobre o #36) |
