@@ -90,7 +90,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 - ✅ `mvn verify`: **138 testes, 94,7% linhas / 85,3% ramos**; actionlint, shellcheck, kustomize e gitleaks ok
 - ✅ Smoke `docker compose` (perfil prod): fila → `BudgetGenerated` → aprovação pelo link → `PaymentRequested`
 - ⬜ Repositório `oficina-billing-service` no GitHub — **criação é do usuário**
-- ⬜ OS: com a Saga ligada, o `EmailNotificationAdapter` ainda envia o e-mail de orçamento (sem código) além do e-mail do Billing
+- ✅ OS: com a Saga ligada, o e-mail de orçamento é só o do Billing (correção no PR #38)
 
 ## Não testado por depender de AWS ou de credenciais
 
@@ -116,7 +116,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 3. Usuário: criar o repositório **`oficina-billing-service`** (público) e avisar; o Claude faz o push de `main` e `homolog`.
 4. Usuário: credenciais de **teste** do Mercado Pago (access token, segredo do webhook, usuários de teste) quando chegar a
    hora do sandbox; decisão **D3** (RDS próprio × *database* na instância atual).
-5. Claude: OS — não enviar o e-mail de orçamento no fluxo da Saga; depois spec 10 (Sonar, depende do token), 11 (pipelines e
+5. Usuário: mergear o PR #38 (e-mail de orçamento só pelo Billing na Saga). Claude: spec 10 (Sonar, depende do token), 11 (pipelines e
    deploy dos 3 serviços) e 12 (Terraform: filas, DynamoDB, banco do Billing, rotas do gateway, IMDS).
 
 ## Histórico
