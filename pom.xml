@@ -31,6 +31,7 @@
         <!-- Fase 4: SQS pelo SDK oficial (sem extensão Quarkiverse: versão compatível com 3.15 não confirmada, spec 03 Q2) -->
         <awssdk.version>2.59.4</awssdk.version>
         <json-schema-validator.version>1.5.9</json-schema-validator.version>
+        <cucumber.version>7.34.7</cucumber.version>
     </properties>
 
     <dependencyManagement>
@@ -258,6 +259,14 @@
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
             <version>${json-schema-validator.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- BDD do fluxo da Saga (spec 09, R9). Executado por dentro de um @QuarkusTest (sem o engine JUnit do
+             Cucumber), para os passos usarem a aplicação real e o PostgreSQL do teste. -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <version>${cucumber.version}</version>
             <scope>test</scope>
         </dependency>
         <!-- SQS real (LocalStack) no teste do adapter de mensageria; versão vem do BOM do Quarkus -->

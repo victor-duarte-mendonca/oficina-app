@@ -209,6 +209,28 @@ mvn test
 # Relatório de cobertura em: target/site/jacoco/index.html
 ```
 
+Os testes de integração usam PostgreSQL 16 e LocalStack (SQS) via Testcontainers: o Docker precisa estar
+rodando. O `mvn verify` reprova se a cobertura do módulo ficar abaixo de 80% das linhas ou 70% dos ramos, ou
+se um pacote crítico (domínio, Saga, aplicação, segurança) ficar abaixo de 80%.
+
+### BDD — ciclo da OS na Saga (Fase 4)
+
+Os cenários de negócio da Saga estão em Gherkin, em português, em
+[`src/test/resources/features/saga/`](src/test/resources/features/saga/ciclo-da-ordem-de-servico.feature):
+fluxo completo (S1), orçamento recusado (S2), Pix recusado em todas as tentativas (S5), falha na execução
+com estorno (S6) e estorno recusado com intervenção da oficina (S7). O Cucumber roda dentro de um
+`@QuarkusTest` com a aplicação e o PostgreSQL reais; Billing e Execution são simulados pelos passos, que
+leem os comandos publicados pelo OS e respondem conforme os [contratos de mensagens](contracts/).
+
+```bash
+# Somente os cenários BDD
+mvn test -Dtest=SagaBddTest
+
+# Relatório: target/cucumber-reports/saga.html
+```
+
+Cenário com passo indefinido, pendente ou falho reprova o build.
+
 ## Estrutura do Projeto
 
 ```
