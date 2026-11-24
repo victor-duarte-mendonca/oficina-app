@@ -52,7 +52,10 @@ public class EmailNotificationAdapter implements NotificationGatewayPort {
 
     private Mail buildMail(WorkOrderStatusChangedEvent e) {
         return switch (e.newStatus()) {
-            case AWAITING_APPROVAL -> Mail.withText(e.customerEmail(),
+            // Sem token, a OS está no fluxo da Saga (Fase 4): o orçamento e o código de autorização pertencem ao
+            // Billing Service, que envia o próprio e-mail. Enviar este também mandaria ao cliente um segundo e-mail,
+            // com um código que não existe.
+            case AWAITING_APPROVAL -> e.approvalToken() == null ? null : Mail.withText(e.customerEmail(),
                 "Orçamento da OS %s aguardando sua aprovação".formatted(e.orderNumber()),
                 awaitingApprovalBody(e));
             case FINISHED -> Mail.withText(e.customerEmail(),

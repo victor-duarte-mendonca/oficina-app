@@ -64,6 +64,15 @@ class EmailNotificationAdapterTest {
     }
 
     @Test
+    void awaitingApprovalInTheSaga_shouldLeaveTheBudgetEmailToBilling() {
+        adapter.notifyStatusChange(new WorkOrderStatusChangedEvent(
+            "OS-000001", WorkOrderStatus.AWAITING_APPROVAL, "Maria", "maria@x.com", "Toyota Corolla (ABC1D23)",
+            new BigDecimal("250.00"), null));
+
+        verify(mailer, never()).send(org.mockito.ArgumentMatchers.<Mail>any());
+    }
+
+    @Test
     void finishedAndDeliveredEmails_shouldNotLeakApprovalToken() {
         adapter.notifyStatusChange(event(WorkOrderStatus.FINISHED, "maria@x.com"));
         adapter.notifyStatusChange(event(WorkOrderStatus.DELIVERED, "maria@x.com"));
