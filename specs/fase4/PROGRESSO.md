@@ -3,7 +3,7 @@
 > Fonte única do estado da Fase 4. Ler no início da sessão; atualizar ao fim de cada spec concluída.
 > Plano e rastreabilidade requisito → spec: [`00-visao-geral.md`](00-visao-geral.md). O estado da Fase 3 continua em
 > [`../PROGRESSO.md`](../PROGRESSO.md).
-> Última atualização: **2026-11-23** (sessão 12d — Billing Service em repositório local; Execution publicado).
+> Última atualização: **2026-11-24** (sessão 12e — Billing e Execution publicados; #37 e #38 mergeados).
 
 ## Estado por spec
 
@@ -15,7 +15,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 02 | SQL × NoSQL | 🟡 | **OS: V7 ✅**; RDS do Billing e DynamoDB do Execution (F3/F4 + F2) |
 | 03 | Mensageria e contratos | 🟡 | **OS: contratos, outbox, inbox, relay, consumidor ✅**; lado Billing/Execution; filas reais (F2); continuar o trace no consumo (spec 13) |
 | 04 | Saga orquestrada | 🟡 | **orquestrador, compensações, timeouts e órfãos ✅ (S1, S2, S5–S11 em unidade; S1, S6, S8, cancelamento e timeout em integração)**; S9 (pod morto) na sessão AWS; README |
-| 05 | Billing + Mercado Pago | 🟡 | **código, testes (138; 94,7%/85,3%), Docker, K8s, CI ✅ em `../oficina-billing-service` (git local), provedor simulado**; **credenciais de teste do Mercado Pago (usuário)** e V1–V5; criar o repositório (usuário); RDS (D3) |
+| 05 | Billing + Mercado Pago | 🟡 | **código, testes (138; 94,7%/85,3%), Docker, K8s, CI ✅ em `../oficina-billing-service` (publicado no GitHub), provedor simulado**; **credenciais de teste do Mercado Pago (usuário)** e V1–V5; RDS (D3) |
 | 06 | Execution Service | 🟡 | **código, testes (66; 97,3%/84,9%), Docker, K8s, CI ✅ em [`oficina-execution-service`](https://github.com/victor-duarte-mendonca/oficina-execution-service)**; rulesets (usuário); deploy com a infra da spec 12 |
 | 07 | Refatoração do OS | 🟡 | **Strategy de fluxo, transições da Saga, histórico, rotas de Saga, 410 ✅**; `sagaState` público; Postman; V8 |
 | 08 | Testes e cobertura | 🟡 | **OS: gate BUNDLE (80% linhas / 70% ramos) ✅ — 94,0% / 79,6%**; Billing/Execution; ArchUnit |
@@ -89,7 +89,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 - ✅ API: link do e-mail (404 igual para token errado e OS inexistente), área do cliente, atendimento, Pix do cliente, simulação
 - ✅ `mvn verify`: **138 testes, 94,7% linhas / 85,3% ramos**; actionlint, shellcheck, kustomize e gitleaks ok
 - ✅ Smoke `docker compose` (perfil prod): fila → `BudgetGenerated` → aprovação pelo link → `PaymentRequested`
-- ⬜ Repositório `oficina-billing-service` no GitHub — **criação é do usuário**
+- ✅ Repositório [`oficina-billing-service`](https://github.com/victor-duarte-mendonca/oficina-billing-service) publicado (`main` e `homolog`, 2026-11-24), ruleset igual ao dos demais
 - ✅ OS: com a Saga ligada, o e-mail de orçamento é só o do Billing (correção no PR #38)
 
 ## Não testado por depender de AWS ou de credenciais
@@ -110,13 +110,14 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 ## Próximo passo
 
-1. Usuário: revisar e mergear o PR #37 (BDD + progresso) em `homolog`. O #36 (OS + Saga) já foi mergeado em 2026-11-23.
-2. Usuário: aplicar os rulesets (PR + squash + checks `build-test`, `docker-build` e `workflow-lint` obrigatórios) e Environments no repositório
-   **`oficina-execution-service`** (já publicado com `main` e `homolog`), como na E0 da Fase 3.
-3. Usuário: criar o repositório **`oficina-billing-service`** (público) e avisar; o Claude faz o push de `main` e `homolog`.
-4. Usuário: credenciais de **teste** do Mercado Pago (access token, segredo do webhook, usuários de teste) quando chegar a
+> Lição (2026-11-24): ruleset aplicado num repositório **vazio** bloqueia a criação de `main`/`homolog` (os checks obrigatórios
+> valem na criação). Criar as branches antes do ruleset, ou desativá-lo durante o primeiro push.
+
+1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); Environments dos repositórios
+   novos quando chegar o deploy (spec 11).
+2. Usuário: credenciais de **teste** do Mercado Pago (access token, segredo do webhook, usuários de teste) quando chegar a
    hora do sandbox; decisão **D3** (RDS próprio × *database* na instância atual).
-5. Usuário: mergear o PR #38 (e-mail de orçamento só pelo Billing na Saga). Claude: spec 10 (Sonar, depende do token), 11 (pipelines e
+3. Claude: spec 10 (Sonar, depende do token), 11 (pipelines e
    deploy dos 3 serviços) e 12 (Terraform: filas, DynamoDB, banco do Billing, rotas do gateway, IMDS).
 
 ## Histórico
@@ -128,3 +129,4 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 12b | 2026-11-23 | Spec 09: BDD da Saga em Cucumber (S1, S2, S5, S6, S7), 591 testes (PR #37; #36 mergeado) |
 | 12c | 2026-11-23 | Spec 06: Execution Service completo em repositório local (DynamoDB, SQS, API, 66 testes, Docker, K8s, CI) |
 | 12d | 2026-11-23 | Execution publicado no GitHub; spec 05: Billing Service em repositório local (PostgreSQL, Pix simulado + adapter MP, webhook, 138 testes) |
+| 12e | 2026-11-24 | PRs #37 e #38 mergeados; Billing publicado no GitHub (`main`/`homolog`), rulesets nos repos novos |
