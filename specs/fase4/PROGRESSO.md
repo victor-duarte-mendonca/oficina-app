@@ -116,7 +116,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); Environments dos repositórios
    novos quando chegar o deploy (spec 11).
 2. Usuário: (Pix já validado na conta de teste em 2026-11-26) guardar `STRIPE_API_KEY` (restrita, teste) e `STRIPE_WEBHOOK_SECRET` em SSM/secret — sem colar no chat. **Feito em 2026-11-26 (hml):** chave restrita `oficina-billing-hml` em `/oficina/hml/stripe_api_key` e endpoint de webhook `we_1Ug1nePktTZwDP3dD4YYBj2X` (URL provisória; segredo em `/oficina/hml/stripe_webhook_secret`); falta o mesmo para `prod`. Decisão **D3** (RDS próprio × *database* na instância atual).
-3. Usuário: mergear `oficina-billing-service#3`; rodar `scripts/e2e-stripe.ps1` no Billing (chave em `$env:STRIPE_API_KEY` ou SSM) e pagar o Pix em "Simulate scan"; depois o script de deploy que atualiza a URL do webhook (S3).
+3. Usuário: mergear `oficina-billing-service#3` e `oficina-app#41` (o E2E local já passou com a Stripe real); depois o script de deploy que atualiza a URL do webhook (S3) e o mesmo para `prod`.
 4. Claude: spec 10 (Sonar, depende do token), 11 (pipelines e
    deploy dos 3 serviços) e 12 (Terraform: filas, DynamoDB, banco do Billing, rotas do gateway, IMDS).
 
@@ -132,4 +132,5 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 12e | 2026-11-24 | PRs #37 e #38 mergeados; Billing publicado no GitHub (`main`/`homolog`), rulesets nos repos novos |
 | 12f | 2026-11-26 | Mercado Pago -> Stripe (Pix, modo de teste): MCP validado (conta BR de teste acessivel, Pix inativo), ADR 0023, spec 05 §4-§6 reescritos, demais specs ajustadas |
 | 12g | 2026-11-26 | Adapter Stripe no Billing (`oficina-billing-service#2`): gateway, assinatura, webhook, V2 `provider_payment_id`; 148 testes; Mercado Pago removido |
-| 12h | 2026-11-26 | Pix testado no sandbox (pago via Simulate scan; estorno `pending` -> `succeeded`; webhook assinado 200). Correcao do estorno pendente e script e2e (`oficina-billing-service#3`, 154 testes) |
+| 12h | 2026-11-26 | Pix testado no sandbox (pago via Simulate scan; estorno `pending` -> `succeeded`; webhook assinado 200). Correcao do estorno pendente e script e2e (`oficina-billing-service#3`, 154 testes)  E2E local com a Stripe real (`scripts/e2e-stripe.ps1`): orçamento, aprovação, Pix, Simulate scan, webhook `APPROVED`, estorno `REFUNDED` -- tudo passou. |
+
