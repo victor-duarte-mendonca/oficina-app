@@ -29,7 +29,8 @@ A numeração é sequencial e imutável: um ADR superado é marcado `Superseded 
 | [0018](0018-divisao-em-tres-microsservicos-e-bancos.md) | Divisão em três microsserviços, com PostgreSQL e DynamoDB | Proposto |
 | [0019](0019-saga-orquestrada-no-os-service.md) | Saga orquestrada, com orquestrador no OS Service | Proposto |
 | [0020](0020-mensageria-sqs-fifo.md) | Mensageria assíncrona com SQS FIFO e DLQ | Proposto |
-| [0021](0021-pagamento-mercado-pago-atras-de-porta.md) | Mercado Pago atrás de uma porta `PaymentGateway` | Proposto |
+| [0021](0021-pagamento-mercado-pago-atras-de-porta.md) | Mercado Pago atrás de uma porta `PaymentGateway` | Substituído (0023) |
 | [0022](0022-credenciais-aws-dos-pods-via-imds.md) | Credenciais AWS dos pods via IMDS restrito por NetworkPolicy | Proposto |
+| [0023](0023-pagamento-stripe-atras-de-porta.md) | Stripe (Pix, modo de teste) atrás da porta `PaymentGateway` | Proposto |
 
 RFCs (problema, espaço de soluções e recomendação): [`../rfc/`](../rfc/). Diagramas: [`../arquitetura.md`](../arquitetura.md).

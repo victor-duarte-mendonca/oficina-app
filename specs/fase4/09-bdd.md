@@ -22,7 +22,7 @@ Camadas adicionais (não substituem a anterior):
 | Nível | Onde | Quando |
 |---|---|---|
 | **BDD de fluxo** (participantes em memória) | `oficina-app/src/test/.../bdd` | todo PR |
-| **BDD de serviço** (Billing: orçamento→pagamento com MP fake; Execution: fila→conclusão) | cada repo, `features/` | todo PR |
+| **BDD de serviço** (Billing: orçamento→pagamento com Stripe fake; Execution: fila→conclusão) | cada repo, `features/` | todo PR |
 | **BDD ponta a ponta real** (3 serviços + SQS/LocalStack no `docker compose`) | `oficina-app/e2e/` (profile Maven `e2e`) | manual/noturno e antes da sessão AWS |
 | Smoke na AWS (mesmos cenários S1/S6 via gateway) | script de smoke + Postman | sessão AWS |
 

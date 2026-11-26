@@ -1,6 +1,6 @@
 # ADR 0021 — Mercado Pago atrás de uma porta `PaymentGateway`
 
-- **Status:** Proposto
+- **Status:** Substituído pelo [ADR 0023](0023-pagamento-stripe-atras-de-porta.md) (2026-11-26)
 - **Origem:** [`specs/fase4/00-visao-geral.md`](../../specs/fase4/00-visao-geral.md) §2 (R3)
 
 ## Contexto

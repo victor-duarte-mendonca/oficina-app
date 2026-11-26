@@ -10,7 +10,7 @@ Um serviço por **capacidade de negócio com ciclo de vida e invariantes própri
 | Serviço | Capacidade | Invariante que ele protege |
 |---|---|---|
 | **OS Service** | cadastro (clientes, veículos, catálogo), ciclo de vida e histórico da OS, orquestração da Saga | a OS só muda de status por transições válidas; estoque de peças coerente com as linhas da OS |
-| **Billing Service** | orçamento, aprovação, pagamento (Mercado Pago), estorno | um orçamento aprovado gera no máximo **um** pagamento ativo; dinheiro nunca é cobrado/estornado em duplicidade |
+| **Billing Service** | orçamento, aprovação, pagamento (Stripe), estorno | um orçamento aprovado gera no máximo **um** pagamento ativo; dinheiro nunca é cobrado/estornado em duplicidade |
 | **Execution Service** | fila de execução, acompanhamento de diagnóstico e reparo | uma OS ocupa no máximo um item ativo na fila; só finaliza o que foi iniciado |
 
 ## 2. Repositórios e nomes (D4 — confirmar)
@@ -41,7 +41,7 @@ não é alcançável pelo security group do OS e vice-versa (ver [12](12-infra-k
 ## 4. Comunicação (resumo; detalhes em [03](03-mensageria-e-contratos.md))
 
 - **Assíncrona (SQS)**: todo o fluxo transacional da Saga (comandos e respostas).
-- **Síncrona (REST)**: apenas (a) cliente/funcionário → gateway → serviço; (b) o webhook do Mercado Pago → Billing;
+- **Síncrona (REST)**: apenas (a) cliente/funcionário → gateway → serviço; (b) o webhook da Stripe → Billing;
   (c) consulta pública de status no OS. **Nenhuma chamada REST entre serviços no caminho da Saga**: acoplamento temporal e
   falha em cascata são exatamente o que a Saga existe para evitar.
 

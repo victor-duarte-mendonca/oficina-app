@@ -8,13 +8,13 @@
 |---|---|---|---|
 | Unidade (domínio, casos de uso, orquestrador) | invariantes, transições, ramos de compensação | JUnit 5 + AssertJ + Mockito; sem Quarkus | todo PR (`mvn verify`) |
 | Componente (adapter + infra real) | JPA/Flyway, DynamoDB, SQS, REST | `@QuarkusTest` + Testcontainers (PostgreSQL 16; LocalStack/Floci p/ SQS e DynamoDB) | todo PR |
-| Contrato | schemas das mensagens; OpenAPI; adapter do MP (WireMock) | JSON Schema validator; WireMock | todo PR |
+| Contrato | schemas das mensagens; OpenAPI; adapter da Stripe (WireMock) | JSON Schema validator; WireMock | todo PR |
 | Arquitetura | domínio sem framework; sem import entre serviços | ArchUnit | todo PR |
 | BDD de fluxo | Saga completa e compensações | Cucumber ([09](09-bdd.md)) | todo PR (rápido, em memória) + sessão AWS (real) |
 | Segurança/RBAC | rota × papel (matriz) | `@TestSecurity`/JWT gerado | todo PR |
 
 Proporção-alvo: unidade ≫ componente > contrato > BDD. Testes **determinísticos**: relógio injetado (`Clock`), sem `sleep`,
-sem rede externa (Mercado Pago sempre atrás de fake/WireMock), IDs controlados.
+sem rede externa (Stripe sempre atrás de fake/WireMock), IDs controlados.
 
 ## 2. Gate de cobertura (R10)
 
@@ -35,7 +35,7 @@ Hoje o gate da Fase 3 mede 80% **por pacote crítico** (`pom.xml`, regra `PACKAG
 |---|---|
 | Orquestrador (OS) | uma asserção por linha do §4 de [04](04-saga-orquestrada.md): sucesso, falha, timeout, duplicado, fora de ordem, `ORPHAN_PAYMENT` |
 | `Budget`/`Payment` (Billing) | transições, idempotência de decisão, token (válido, usado, adulterado), 1 pagamento ativo, valor ≠ total rejeitado |
-| Webhook | assinatura inválida, `data.id` divergente, duplicado, desconhecido, MP fora do ar |
+| Webhook | assinatura inválida, `id` do PaymentIntent divergente, `event.id` duplicado, desconhecido, tolerância de tempo excedida, Stripe fora do ar |
 | `ExecutionTask` | transições, concorrência, idempotência, cancelamento em cada estado |
 | Outbox/Inbox | falha entre `commit` e publicação; falha entre processar e `DeleteMessage`; mensagem venenosa → DLQ |
 | Migração V7 | aplicada sobre dados da V6 populados; rollback de versão da app |

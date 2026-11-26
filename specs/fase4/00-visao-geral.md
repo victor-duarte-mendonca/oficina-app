@@ -16,10 +16,10 @@
 - **Próximo passo (F0):** (1) criar branch `feature/f4-especificacoes` a partir de `homolog` e abrir PR com estes arquivos
   (o usuário faz o merge); (2) obter do usuário as respostas da §5 (D1–D4); (3) com elas, mudar os ADRs 0018–0022 para *Aceito*
   e marcar o ADR 0008 como substituído parcialmente pelo 0020; (4) criar `specs/fase4/PROGRESSO.md` (checklist por etapa) e
-  só então seguir para F1. **O usuário fornecerá, quando chegarmos lá:** credenciais do Mercado Pago (conta/aplicação/usuários de
+  só então seguir para F1. **O usuário fornecerá, quando chegarmos lá:** credenciais da Stripe (ativar Pix na conta de teste, chave de API de teste, segredo do webhook; antes: Mercado Pago, abandonado em 2026-11-26) (conta/aplicação/usuários de
   teste), organização e token do SonarCloud, criação dos repositórios, secrets e o vídeo.
 - **Não decidido ainda:** tudo da §5 (D1–D4). As decisões da §2 são **recomendações** do Claude, não confirmadas pelo usuário.
-- **Verificações pendentes** (apontadas nas specs; resolver na etapa indicada): Mercado Pago V1–V6 ([05](05-billing-service-mercado-pago.md) §4, F4);
+- **Verificações pendentes** (apontadas nas specs; resolver na etapa indicada): Stripe S1–S7 ([05](05-billing-service-mercado-pago.md) §4.3, F4);
   Q1 sem conector SmallRye p/ SQS e Q2 versão do `quarkus-amazon-sqs` para Quarkus 3.15.7 ([03](03-mensageria-e-contratos.md) §5, spike da F2);
   `t3.large` permitido no Academy e capacidade do nó ([12](12-infra-k8s-mensageria.md) §3); `NetworkPolicy` efetiva no k3s p/ o IMDS
   ([12](12-infra-k8s-mensageria.md) §6, [ADR 0022](../../docs/adr/0022-credenciais-aws-dos-pods-via-imds.md)); DLQ FIFO exige fila FIFO ([03](03-mensageria-e-contratos.md) §1).
@@ -34,7 +34,7 @@
 |---|---|---|
 | R1 | ≥ 3 microsserviços, cada um com repo, infra e banco próprios (OS, Billing, Execução) | só o monólito `oficina-app` |
 | R2 | ≥ 1 banco SQL e ≥ 1 NoSQL no conjunto | só PostgreSQL |
-| R3 | Billing: orçamento, pagamento via **Mercado Pago**, atualização da OS | inexistente |
+| R3 | Billing: orçamento, pagamento via **Stripe** (Pix, modo de teste; substituiu o Mercado Pago), atualização da OS | inexistente |
 | R4 | REST síncrono (quando necessário) + mensageria assíncrona | só REST |
 | R5 | Nenhum serviço acessa o banco de outro | — |
 | R6 | **Saga Pattern** com rollback/compensação em qualquer etapa | inexistente |
@@ -59,7 +59,7 @@
 | Divisão e bancos | 3 serviços: OS (`oficina-app` refatorado, PostgreSQL), Billing (PostgreSQL próprio), Execução (DynamoDB) |
 | Saga | **Orquestrada**, orquestrador no OS Service; outbox + consumidores idempotentes |
 | Mensageria | **SQS FIFO** (`MessageGroupId = workOrderId`) com DLQ; substitui parcialmente o ADR 0008 |
-| Pagamento | Porta `PaymentGateway`; adapter Mercado Pago (Pix, sandbox); fake nos testes |
+| Pagamento | Porta `PaymentGateway`; adapter Stripe (Pix, modo de teste); fake nos testes |
 | Qualidade | SonarCloud (repos públicos) + JaCoCo ≥ 80% do bundle inteiro, gate bloqueante |
 
 ## 3. Saga (OS → orçamento → aprovação → pagamento → execução)
@@ -69,8 +69,8 @@
 | 1. OS aberta | `RECEIVED` | — |
 | 2. Diagnóstico concluído → Billing gera/envia orçamento | `AWAITING_APPROVAL` | OS volta a `IN_DIAGNOSIS` |
 | 3. Cliente aprova | segue ao pagamento | recusa/expiração: orçamento anulado, OS `CANCELLED` |
-| 4. Pagamento no MP | novo status `AWAITING_PAYMENT` → pago | recusado/expirado: retentativas limitadas, depois orçamento anulado e OS `CANCELLED` |
-| 5. Execução enfileirada e realizada | `IN_EXECUTION` → `FINISHED` | falha: **estorno no MP**, depois OS `CANCELLED` |
+| 4. Pagamento na Stripe | novo status `AWAITING_PAYMENT` → pago | recusado/expirado: retentativas limitadas, depois orçamento anulado e OS `CANCELLED` |
+| 5. Execução enfileirada e realizada | `IN_EXECUTION` → `FINISHED` | falha: **estorno na Stripe**, depois OS `CANCELLED` |
 | Estorno falha | — | `COMPENSATION_PENDING` + alerta + DLQ (intervenção manual) |
 
 Timeouts por passo; estado em `saga_instance` (log de passos). Envelope de mensagem: `messageId`, `sagaId`, `correlationId`,
@@ -82,9 +82,9 @@ Timeouts por passo; estado em `saga_instance` (log de passos). Envelope de mensa
 |---|---|---|
 | F0 Preparação (sem AWS) | specs e ADRs, nomes, 2 repos novos com rulesets/Environments, `CLAUDE.md`/`PROGRESSO` da Fase 4 | repos protegidos; ADRs revisados |
 | F1 Contratos | envelope, catálogo de comandos/eventos (AsyncAPI/JSON Schema), OpenAPI por serviço | contract tests nos dois lados |
-| F2 Infra | Terraform: SQS+DLQ, DynamoDB, RDS do Billing; rotas no Ingress e no gateway (webhook MP sem JWT, com validação de assinatura); **spike de capacidade do nó** | `apply` em hml e memória medida com 3 serviços |
+| F2 Infra | Terraform: SQS+DLQ, DynamoDB, RDS do Billing; rotas no Ingress e no gateway (webhook Stripe sem JWT, com validação de assinatura); **spike de capacidade do nó** | `apply` em hml e memória medida com 3 serviços |
 | F3 Execution Service | esqueleto: hexagonal, consumidor SQS idempotente, DynamoDB, pipeline | no ar em hml, consumindo e respondendo |
-| F4 Billing Service | orçamento, aprovação, adapter MP, webhook, estorno, `X-Idempotency-Key` | pagamento sandbox ponta a ponta |
+| F4 Billing Service | orçamento, aprovação, adapter Stripe, webhook, estorno, `Idempotency-Key` | pagamento sandbox ponta a ponta |
 | F5 OS Service | orquestrador, outbox, migration V7 (`AWAITING_PAYMENT`, `saga_instance`, `outbox`), timeouts; API pública da Fase 3 compatível | suíte da Fase 3 verde + testes da Saga |
 | F6 Qualidade (transversal, gate desde a F3) | Cucumber (feliz **e** compensação), JaCoCo ≥ 80% do bundle, Sonar bloqueante | CI reprova abaixo do limite |
 | F7 CI/CD | pipeline por serviço: build, testes, Sonar, imagem, deploy por SSM, smoke, rollback | deploy independente de cada serviço |
@@ -100,13 +100,13 @@ Caminho crítico: F0 → F1 → F2 → F3 → F4 → F5 → F9. Só F2, F8 e F9 
 2. **D2** — SQS (recomendado) ou RabbitMQ; aceitar subir o tamanho do nó (`t3.large`). Specs 03 e 12.
 3. **D3** — Billing com RDS próprio (recomendado) ou *database* separado na instância atual. Specs 02 e 12.
 4. **D4** — Nome dos repos novos (`oficina-billing-service`, `oficina-execution-service`) e se `oficina-app` mantém o nome. Spec 01.
-5. Do usuário, por regra do projeto: credenciais/usuários de teste do Mercado Pago, organização e token do SonarCloud, valores de secrets, criação dos repositórios, vídeo e PDF.
+5. Do usuário, por regra do projeto: credenciais de teste da Stripe (chave de API e segredo do webhook; Pix ativado na conta), organização e token do SonarCloud, valores de secrets, criação dos repositórios, vídeo e PDF.
 
 ## 6. Riscos
 
 1. **Capacidade do nó:** 6 agentes + 1 app já em 65% de memória; 3 JVMs exigem t3.large ou heap reduzido e `minReplicas: 1`. Spike na F2, antes do código.
 2. **Orçamento do Academy:** +1 RDS e +1 sessão de validação; SQS/DynamoDB desprezíveis.
-3. **Sandbox do Mercado Pago:** credenciais e usuários de teste do usuário; na CI o MP fica atrás do fake.
+3. **Modo de teste da Stripe:** conta com Pix ativo e credenciais do usuário; na CI a Stripe fica atrás do fake.
 4. **Dívida da Fase 3** (New Relic sem dados, HPA, rollback): juntar na primeira sessão AWS.
 5. **Atomicidade e duplicidade de mensagens:** outbox e idempotência desde o primeiro serviço.
 
