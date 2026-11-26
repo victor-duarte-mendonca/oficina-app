@@ -38,8 +38,8 @@ A Saga **começa** em `PATCH /admin/work-orders/{id}/send-for-approval` (OS em `
 |---|---|---|---|---|
 | 1 | `send-for-approval` | `GenerateBudget` | `BudgetGenerated` → OS `AWAITING_APPROVAL` | `BudgetGenerationFailed` ou sem resposta em 30 s (3 tentativas) → OS volta a `IN_DIAGNOSIS`; Saga `CANCELLED` (nada a desfazer fora do OS) |
 | 2 | decisão do cliente/funcionário | — (evento do Billing) | `BudgetApproved` → passo 3 | `BudgetRejected` / `BudgetExpired` (TTL de aprovação) → `VoidBudget`; restaura estoque; OS `CANCELLED` |
-| 3 | `BudgetApproved` | `RequestPayment` | `PaymentRequested` → OS `AWAITING_PAYMENT` | `PaymentRequestFailed` (MP indisponível, 3 tentativas com *backoff*) → `VoidBudget`; OS `CANCELLED` |
-| 4 | pagamento no Mercado Pago | — | `PaymentApproved` → passo 5 | `PaymentRejected` ou `PaymentExpired`: até **2 novas tentativas** (novo `RequestPayment`, novo Pix); esgotadas → `VoidBudget`; OS `CANCELLED` |
+| 3 | `BudgetApproved` | `RequestPayment` | `PaymentRequested` → OS `AWAITING_PAYMENT` | `PaymentRequestFailed` (Stripe indisponível, 3 tentativas com *backoff*) → `VoidBudget`; OS `CANCELLED` |
+| 4 | pagamento na Stripe (Pix) | — | `PaymentApproved` → passo 5 | `PaymentRejected` ou `PaymentExpired`: até **2 novas tentativas** (novo `RequestPayment`, novo Pix); esgotadas → `VoidBudget`; OS `CANCELLED` |
 | 5 | `PaymentApproved` | `EnqueueExecution` | `ExecutionEnqueued` → OS `AWAITING_EXECUTION` | `ExecutionEnqueueFailed` ou sem resposta → **`RefundPayment`** → `PaymentRefunded` → `VoidBudget` → OS `CANCELLED` |
 | 6 | mecânico inicia | — | `ExecutionStarted` → OS `IN_EXECUTION` | — |
 | 7 | mecânico encerra | — | `ExecutionFinished` → OS `FINISHED`; Saga `COMPLETED`; notifica cliente | `ExecutionFailed` (peça indisponível, defeito sem reparo) → `RefundPayment` → `VoidBudget` → OS `CANCELLED`; estoque restaurado |

@@ -38,9 +38,9 @@ Alternativa se a memória for o gargalo definitivo: **build nativo** (GraalVM) d
 
 ## 4. Rede e isolamento
 
-- **Namespaces**: manter `oficina` e rotular os Deployments (`app=oficina-os|billing|execution`); `NetworkPolicy` por serviço (ingress só do Traefik e do vizinho necessário; egress para DNS, RDS/DynamoDB/SQS/Mercado Pago/New Relic).
+- **Namespaces**: manter `oficina` e rotular os Deployments (`app=oficina-os|billing|execution`); `NetworkPolicy` por serviço (ingress só do Traefik e do vizinho necessário; egress para DNS, RDS/DynamoDB/SQS/Stripe/New Relic).
 - **RDS do Billing**: security group aceita 5432 **só** do SG do nó (mesmo padrão do RDS do OS); como o nó é um só, a separação real entre o acesso do OS e do Billing é feita por **credenciais distintas** (usuário/senha por serviço em Secrets distintos) — registrar a limitação no README.
-- **Egress ao Mercado Pago**: o nó está em subnet pública com IP público ⇒ saída à internet existe sem NAT; confirmar na F2 com um `curl` ao `api.mercadopago.com` a partir de um pod.
+- **Egress à Stripe**: o nó está em subnet pública com IP público ⇒ saída à internet existe sem NAT; confirmar na F2 com um `curl` ao `api.stripe.com` a partir de um pod.
 - **VPC endpoints** para SQS/DynamoDB **não** são necessários (tráfego sai pelo IP público do nó) e custariam por hora; descartados.
 
 ## 5. Gateway e Ingress
@@ -51,9 +51,9 @@ API Gateway atual: rotas `ANY /admin/{proxy+}`, `ANY /me/{proxy+}`, `GET /public
 |---|---|
 | Rotas existentes | continuam; **o roteamento por serviço é feito no Traefik** (Ingress por serviço com `pathPrefix`: `/admin/budgets`, `/me/budgets`, `/public/budgets` → Billing; `/admin/executions` → Execution; resto → OS). Traefik escolhe o prefixo mais específico |
 | `POST /public/{proxy+}` | **nova** (a rota pública atual é só `GET`), para a decisão por link do e-mail; sem authorizer; *throttling* próprio |
-| `POST /webhooks/mercadopago` | **nova**, sem authorizer JWT (a autenticação é a assinatura, [05](05-billing-service-mercado-pago.md) §5); throttling baixo (ex.: 20 rps, burst 40); corpo ≤ 16 KB |
+| `POST /webhooks/stripe` | **nova**, sem authorizer JWT (a autenticação é a assinatura, [05](05-billing-service-mercado-pago.md) §5); throttling baixo (ex.: 20 rps, burst 40); corpo ≤ 16 KB |
 | `X-Gateway-Key` | enviado pelo gateway a todas as integrações; **o webhook também passa pelo gateway**, então segue protegido contra acesso direto ao EIP |
-| URL do webhook | muda a cada sessão (Academy); informada ao Mercado Pago **por pagamento** (V2), sem reconfigurar o painel |
+| URL do webhook | muda a cada sessão (Academy); a Stripe guarda a URL **no endpoint**: o deploy a atualiza pela API (S3), o `whsec_` não muda |
 
 Verificações da F2: o contrato do authorizer (`403` com token recusado, `401` sem header) e os testes de throttling da Fase 3 continuam passando.
 
@@ -74,7 +74,7 @@ Limitação a documentar: "IAM por serviço" não é viável no Academy (`LabRol
 
 ## 7. Operação (runbook da Fase 4 — estende o `RUNBOOK.md`)
 
-Ordem de subida: infra-k8s (+ filas) → infra-database (RDS billing + DynamoDB) → segredos (MP no SSM, **do usuário**) → deploy OS/Billing/Execution → auth-lambda (rotas) → Observability.
+Ordem de subida: infra-k8s (+ filas) → infra-database (RDS billing + DynamoDB) → segredos (Stripe no SSM, **do usuário**) → deploy OS/Billing/Execution → auth-lambda (rotas) → Observability.
 Ordem de encerramento: Observability → auth-lambda → infra-database → infra-k8s → **varredura de órfãos incluindo filas e tabelas**.
 Reprocesso de DLQ: `aws sqs start-message-move-task` (ou script) para a fila de origem após corrigir a causa; nunca apagar sem registrar `messageId` no log.
 Medições de custo/tempo na `orcamento.md` (RDS adicional ≈ US$0,016/h; SQS/DynamoDB desprezíveis).

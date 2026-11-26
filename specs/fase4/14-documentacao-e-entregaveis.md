@@ -36,7 +36,7 @@ compensações (no OS: escolha e justificativa completas) · 7. Como rodar local
 
 | Diagrama | Conteúdo |
 |---|---|
-| **Arquitetura final** (obrigatório no PDF) | clientes/funcionários → API Gateway (+ Lambdas) → Traefik → 3 serviços; bancos (RDS OS, RDS Billing, DynamoDB); SQS (filas e DLQs); Mercado Pago; New Relic; ECR/CI |
+| **Arquitetura final** (obrigatório no PDF) | clientes/funcionários → API Gateway (+ Lambdas) → Traefik → 3 serviços; bancos (RDS OS, RDS Billing, DynamoDB); SQS (filas e DLQs); Stripe; New Relic; ECR/CI |
 | Contexto/containers (C4 nível 1–2) | um por serviço |
 | **Sequência da Saga** | S1 (feliz) e S6 (falha de execução → estorno), mais S2 e S7 |
 | Máquina de estados | `WorkOrderStatus` e `saga_instance.state` |
