@@ -15,7 +15,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 02 | SQL × NoSQL | 🟡 | **OS: V7 ✅**; RDS do Billing e DynamoDB do Execution (F3/F4 + F2) |
 | 03 | Mensageria e contratos | 🟡 | **OS: contratos, outbox, inbox, relay, consumidor ✅**; lado Billing/Execution; filas reais (F2); continuar o trace no consumo (spec 13) |
 | 04 | Saga orquestrada | 🟡 | **orquestrador, compensações, timeouts e órfãos ✅ (S1, S2, S5–S11 em unidade; S1, S6, S8, cancelamento e timeout em integração)**; S9 (pod morto) na sessão AWS; README |
-| 05 | Billing + Stripe | 🟡 | **código, testes (138; 94,7%/85,3%), Docker, K8s, CI ✅ em `../oficina-billing-service` (publicado no GitHub), provedor simulado**; **adapter Stripe pronto em `oficina-billing-service#2` (148 testes), Pix validado no sandbox; usuário ativa o Pix na conta de teste e fornece chave + segredo do webhook (spec 05 §4.2)**; S1–S7; RDS (D3) |
+| 05 | Billing + Stripe | 🟢 | **código, 154 testes, Docker, K8s, CI ✅ em `../oficina-billing-service` (`homolog`); adapter Stripe + estorno pendente + `scripts/e2e-stripe.ps1` mergeados; E2E local com a Stripe real passou (Pix, webhook, estorno)**; falta: URL do webhook no deploy (S3), chave/endpoint de `prod`, RDS (D3) |
 | 06 | Execution Service | 🟡 | **código, testes (66; 97,3%/84,9%), Docker, K8s, CI ✅ em [`oficina-execution-service`](https://github.com/victor-duarte-mendonca/oficina-execution-service)**; rulesets (usuário); deploy com a infra da spec 12 |
 | 07 | Refatoração do OS | 🟡 | **Strategy de fluxo, transições da Saga, histórico, rotas de Saga, 410 ✅**; `sagaState` público; Postman; V8 |
 | 08 | Testes e cobertura | 🟡 | **OS: gate BUNDLE (80% linhas / 70% ramos) ✅ — 94,0% / 79,6%**; Billing/Execution; ArchUnit |
@@ -115,10 +115,32 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); Environments dos repositórios
    novos quando chegar o deploy (spec 11).
-2. Usuário: (Pix já validado na conta de teste em 2026-11-26) guardar `STRIPE_API_KEY` (restrita, teste) e `STRIPE_WEBHOOK_SECRET` em SSM/secret — sem colar no chat. **Feito em 2026-11-26 (hml):** chave restrita `oficina-billing-hml` em `/oficina/hml/stripe_api_key` e endpoint de webhook `we_1Ug1nePktTZwDP3dD4YYBj2X` (URL provisória; segredo em `/oficina/hml/stripe_webhook_secret`); falta o mesmo para `prod`. Decisão **D3** (RDS próprio × *database* na instância atual).
-3. Usuário: mergear `oficina-billing-service#3` e `oficina-app#41` (o E2E local já passou com a Stripe real); depois o script de deploy que atualiza a URL do webhook (S3) e o mesmo para `prod`.
-4. Claude: spec 10 (Sonar, depende do token), 11 (pipelines e
-   deploy dos 3 serviços) e 12 (Terraform: filas, DynamoDB, banco do Billing, rotas do gateway, IMDS).
+2. Usuário: (chave `oficina-billing-hml` já regravada no SSM e validada em 2026-11-26) repetir chave `oficina-billing-prod` + endpoint de webhook para `prod`; token do SonarCloud; decisões D3 e D1.
+3. Claude: **spec 11** (pipelines e deploy dos 3 serviços, com o passo que atualiza a URL do endpoint `we_1Ug1nePktTZwDP3dD4YYBj2X` a cada sessão do Academy — S3 — e injeta `STRIPE_*` do SSM no Secret do Billing), **spec 12** (Terraform: filas, DynamoDB, banco do Billing, rota `/webhooks/stripe` sem JWT, egress a `api.stripe.com`, IMDS) e spec 10 (Sonar).
+   O E2E local com a Stripe real já passou (`scripts/e2e-stripe.ps1` no Billing).
+
+## Desafios e lições da sessão de 2026-11-26 (Mercado Pago → Stripe, sessões 12f–12h)
+
+| Desafio | Causa | Como superamos / regra daqui em diante |
+|---|---|---|
+| Mercado Pago sem autenticação | credenciais do sandbox não funcionaram | Troca para a Stripe **só no adapter** (a porta `PaymentGatewayPort` isolou o domínio): ADR 0023, spec 05 §4–§6, `StripeApi`/`StripePaymentGateway`/`StripeSignature`, Flyway V2; Mercado Pago removido |
+| Pix "habilitado" no Dashboard mas `capabilities.pix_payments=inactive` | em sandbox o campo da conta não reflete o que a API aceita | A prova é um PaymentIntent real (Stripe CLI), não o campo `capabilities` (S1, S2 resolvidos) |
+| MCP da Stripe não cria PaymentIntent | só expõe leituras desse recurso | Escrever com o **Stripe CLI** (`stripe payment_intents create`, `stripe refunds create`); ler/validar pelo MCP |
+| `payment_method_types` recusado e `return_url` exigido | a API só aceita métodos dinâmicos (Dashboard) | `automatic_payment_methods[enabled]=true` + `allow_redirects=never` + `payment_method_data[type]=pix`. `stripe trigger payment_intent.succeeded` quebra pelo mesmo motivo: gerar evento com `pm_card_visa` |
+| Estorno de Pix nasce `pending` | o adapter tratava qualquer 2xx como estorno concluído | `RefundOutcome` na porta; `findRefund` (`GET /v1/refunds?payment_intent=`); `REFUND_PENDING` só conclui por `refund.updated`/reconciliação de 60 s; falha vira `PaymentRefundFailed` |
+| Webhook "invisível" na primeira execução | `stripe listen` morreu com `Permission denied`: o Stripe CLI lê a variável `STRIPE_API_KEY` como a chave **dele** e recebeu a chave restrita do Billing | A chave do Billing vai ao compose como `BILLING_STRIPE_API_KEY`; o script limpa `STRIPE_API_KEY`. **Nunca exportar chave do Billing com o nome `STRIPE_API_KEY`** |
+| Chave de API vazou em print/histórico | o usuário colou a chave dentro de `Read-Host "…"` (o texto entre aspas é só o prompt) | Padrão seguro: o script pede a chave com `Read-Host -AsSecureString` (usuário só cola no prompt). Chave exposta = **rolar** (Dashboard → *Alternar chave*) + `Clear-History` + apagar `(Get-PSReadLineOption).HistorySavePath`. Nunca repetir o valor |
+| SSM com valor errado | `put-parameter --value (Get-Clipboard)` gravou o texto de um comando (a área de transferência mudou) | Validar o prefixo (`rk_test_`) antes de gravar e conferir só prefixo+tamanho. **Resolvido em 2026-11-26: o usuário regravou `/oficina/hml/stripe_api_key` com a chave nova e os comandos funcionaram** |
+| `.ps1` quebrando no PowerShell 5.1 | acentos sem BOM, stderr de programa nativo vira erro fatal, `try` não é expressão | Script só em ASCII; `$ErrorActionPreference="Continue"` + `Step`/`throw`; `2>&1` e regex tolerantes à codificação |
+| Código de aprovação não achado no log | log do mailer em JSON, console com acentos trocados e logs de execuções anteriores | Filtrar pela OS do run e usar `C.{1,3}digo de autoriza.{1,6}o:` |
+| Edição por script desfez regex | `perl -pi` dentro de aspas duplas transforma `\w` em `w`; arquivos do Windows com CRLF e LF misturados | Conferir o resultado do `perl`; `sed -i 's/\r$//'` antes de editar multilinha; preferir a ferramenta Edit |
+| Commits depois do merge não entraram na `homolog` | o PR já tinha sido mergeado quando continuei na mesma branch | Depois de um merge, abrir branch nova a partir de `origin/homolog` (ou cherry-pick) e conferir `gh pr view` antes de dizer que um PR está aberto |
+| Docker Desktop parado | — | `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"` e esperar `docker version`; projeto Compose próprio, `stop` (nunca `down -v`) |
+
+Estado ao fim da sessão: **E2E local com a Stripe real passou** (`oficina-billing-service/scripts/e2e-stripe.ps1`:
+orçamento → aprovação → Pix → *Simulate scan* → webhook `APPROVED` → estorno `REFUNDED`). Tudo mergeado em `homolog`
+(`oficina-app#40–#42`, `oficina-billing-service#2–#4`); Billing com 154 testes. Ainda **não** feito: deploy do webhook no
+Academy (S3), chave/endpoint de `prod`, specs 10–12.
 
 ## Histórico
 
@@ -134,3 +156,4 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 12g | 2026-11-26 | Adapter Stripe no Billing (`oficina-billing-service#2`): gateway, assinatura, webhook, V2 `provider_payment_id`; 148 testes; Mercado Pago removido |
 | 12h | 2026-11-26 | Pix testado no sandbox (pago via Simulate scan; estorno `pending` -> `succeeded`; webhook assinado 200). Correcao do estorno pendente e script e2e (`oficina-billing-service#3`, 154 testes)  E2E local com a Stripe real (`scripts/e2e-stripe.ps1`): orçamento, aprovação, Pix, Simulate scan, webhook `APPROVED`, estorno `REFUNDED` -- tudo passou. |
 
+| 12i | 2026-11-26 | Lições da troca para a Stripe documentadas (tabela de desafios acima); `CLAUDE.md` do workspace atualizado |
