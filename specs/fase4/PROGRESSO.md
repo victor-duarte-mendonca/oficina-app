@@ -115,7 +115,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); Environments dos repositórios
    novos quando chegar o deploy (spec 11).
-2. Usuário: (Pix já validado na conta de teste em 2026-11-26) guardar `STRIPE_API_KEY` (restrita, teste) e `STRIPE_WEBHOOK_SECRET` em SSM/secret — sem colar no chat;; decisão **D3** (RDS próprio × *database* na instância atual).
+2. Usuário: (Pix já validado na conta de teste em 2026-11-26) guardar `STRIPE_API_KEY` (restrita, teste) e `STRIPE_WEBHOOK_SECRET` em SSM/secret — sem colar no chat;; **feito em 2026-11-26 (hml):** chave restrita `oficina-billing-hml` em `/oficina/hml/stripe_api_key` e endpoint de webhook `we_1Ug1nePktTZwDP3dD4YYBj2X` (URL provisória; segredo em `/oficina/hml/stripe_webhook_secret`); falta o mesmo para `prod`; decisão **D3** (RDS próprio × *database* na instância atual).
 3. Claude: **adapter da Stripe no Billing** (spec 05 §8.1) assim que S1 estiver ok — antes, criar um PaymentIntent de teste pelo MCP para fechar S2.
 4. Claude: spec 10 (Sonar, depende do token), 11 (pipelines e
    deploy dos 3 serviços) e 12 (Terraform: filas, DynamoDB, banco do Billing, rotas do gateway, IMDS).
