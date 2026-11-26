@@ -115,7 +115,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); Environments dos repositórios
    novos quando chegar o deploy (spec 11).
-2. Usuário: **rolar a chave `oficina-billing-hml`** (apareceu em prints) e regravar `/oficina/hml/stripe_api_key` com o script/prompt oculto (o valor atual no SSM está errado); repetir chave `oficina-billing-prod` + endpoint de webhook para `prod`; token do SonarCloud; decisões D3 e D1.
+2. Usuário: (chave `oficina-billing-hml` já regravada no SSM e validada em 2026-11-26) repetir chave `oficina-billing-prod` + endpoint de webhook para `prod`; token do SonarCloud; decisões D3 e D1.
 3. Claude: **spec 11** (pipelines e deploy dos 3 serviços, com o passo que atualiza a URL do endpoint `we_1Ug1nePktTZwDP3dD4YYBj2X` a cada sessão do Academy — S3 — e injeta `STRIPE_*` do SSM no Secret do Billing), **spec 12** (Terraform: filas, DynamoDB, banco do Billing, rota `/webhooks/stripe` sem JWT, egress a `api.stripe.com`, IMDS) e spec 10 (Sonar).
    O E2E local com a Stripe real já passou (`scripts/e2e-stripe.ps1` no Billing).
 
@@ -130,7 +130,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | Estorno de Pix nasce `pending` | o adapter tratava qualquer 2xx como estorno concluído | `RefundOutcome` na porta; `findRefund` (`GET /v1/refunds?payment_intent=`); `REFUND_PENDING` só conclui por `refund.updated`/reconciliação de 60 s; falha vira `PaymentRefundFailed` |
 | Webhook "invisível" na primeira execução | `stripe listen` morreu com `Permission denied`: o Stripe CLI lê a variável `STRIPE_API_KEY` como a chave **dele** e recebeu a chave restrita do Billing | A chave do Billing vai ao compose como `BILLING_STRIPE_API_KEY`; o script limpa `STRIPE_API_KEY`. **Nunca exportar chave do Billing com o nome `STRIPE_API_KEY`** |
 | Chave de API vazou em print/histórico | o usuário colou a chave dentro de `Read-Host "…"` (o texto entre aspas é só o prompt) | Padrão seguro: o script pede a chave com `Read-Host -AsSecureString` (usuário só cola no prompt). Chave exposta = **rolar** (Dashboard → *Alternar chave*) + `Clear-History` + apagar `(Get-PSReadLineOption).HistorySavePath`. Nunca repetir o valor |
-| SSM com valor errado | `put-parameter --value (Get-Clipboard)` gravou o texto de um comando (a área de transferência mudou) | Validar o prefixo (`rk_test_`) antes de gravar e conferir só prefixo+tamanho. **Pendente: regravar `/oficina/hml/stripe_api_key`** |
+| SSM com valor errado | `put-parameter --value (Get-Clipboard)` gravou o texto de um comando (a área de transferência mudou) | Validar o prefixo (`rk_test_`) antes de gravar e conferir só prefixo+tamanho. **Resolvido em 2026-11-26: o usuário regravou `/oficina/hml/stripe_api_key` com a chave nova e os comandos funcionaram** |
 | `.ps1` quebrando no PowerShell 5.1 | acentos sem BOM, stderr de programa nativo vira erro fatal, `try` não é expressão | Script só em ASCII; `$ErrorActionPreference="Continue"` + `Step`/`throw`; `2>&1` e regex tolerantes à codificação |
 | Código de aprovação não achado no log | log do mailer em JSON, console com acentos trocados e logs de execuções anteriores | Filtrar pela OS do run e usar `C.{1,3}digo de autoriza.{1,6}o:` |
 | Edição por script desfez regex | `perl -pi` dentro de aspas duplas transforma `\w` em `w`; arquivos do Windows com CRLF e LF misturados | Conferir o resultado do `perl`; `sed -i 's/\r$//'` antes de editar multilinha; preferir a ferramenta Edit |
