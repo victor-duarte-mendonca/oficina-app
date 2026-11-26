@@ -15,7 +15,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 02 | SQL × NoSQL | 🟡 | **OS: V7 ✅**; RDS do Billing e DynamoDB do Execution (F3/F4 + F2) |
 | 03 | Mensageria e contratos | 🟡 | **OS: contratos, outbox, inbox, relay, consumidor ✅**; lado Billing/Execution; filas reais (F2); continuar o trace no consumo (spec 13) |
 | 04 | Saga orquestrada | 🟡 | **orquestrador, compensações, timeouts e órfãos ✅ (S1, S2, S5–S11 em unidade; S1, S6, S8, cancelamento e timeout em integração)**; S9 (pod morto) na sessão AWS; README |
-| 05 | Billing + Stripe | 🟡 | **código, testes (138; 94,7%/85,3%), Docker, K8s, CI ✅ em `../oficina-billing-service` (publicado no GitHub), provedor simulado**; **troca Mercado Pago → Stripe decidida em 2026-11-26 (ADR 0023): adapter da Stripe a implementar; usuário ativa o Pix na conta de teste e fornece chave + segredo do webhook (spec 05 §4.2)**; S1–S7; RDS (D3) |
+| 05 | Billing + Stripe | 🟡 | **código, testes (138; 94,7%/85,3%), Docker, K8s, CI ✅ em `../oficina-billing-service` (publicado no GitHub), provedor simulado**; **adapter Stripe pronto em `oficina-billing-service#2` (148 testes), Pix validado no sandbox; usuário ativa o Pix na conta de teste e fornece chave + segredo do webhook (spec 05 §4.2)**; S1–S7; RDS (D3) |
 | 06 | Execution Service | 🟡 | **código, testes (66; 97,3%/84,9%), Docker, K8s, CI ✅ em [`oficina-execution-service`](https://github.com/victor-duarte-mendonca/oficina-execution-service)**; rulesets (usuário); deploy com a infra da spec 12 |
 | 07 | Refatoração do OS | 🟡 | **Strategy de fluxo, transições da Saga, histórico, rotas de Saga, 410 ✅**; `sagaState` público; Postman; V8 |
 | 08 | Testes e cobertura | 🟡 | **OS: gate BUNDLE (80% linhas / 70% ramos) ✅ — 94,0% / 79,6%**; Billing/Execution; ArchUnit |
@@ -116,7 +116,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); Environments dos repositórios
    novos quando chegar o deploy (spec 11).
 2. Usuário: (Pix já validado na conta de teste em 2026-11-26) guardar `STRIPE_API_KEY` (restrita, teste) e `STRIPE_WEBHOOK_SECRET` em SSM/secret — sem colar no chat;; **feito em 2026-11-26 (hml):** chave restrita `oficina-billing-hml` em `/oficina/hml/stripe_api_key` e endpoint de webhook `we_1Ug1nePktTZwDP3dD4YYBj2X` (URL provisória; segredo em `/oficina/hml/stripe_webhook_secret`); falta o mesmo para `prod`; decisão **D3** (RDS próprio × *database* na instância atual).
-3. Claude: **adapter da Stripe no Billing** (spec 05 §8.1) assim que S1 estiver ok — antes, criar um PaymentIntent de teste pelo MCP para fechar S2.
+3. Usuário: mergear `oficina-billing-service#2` e `oficina-app#40`; depois o fluxo ponta a ponta com a chave real (Simulate scan, S4) e o script de deploy que atualiza a URL do webhook (S3).
 4. Claude: spec 10 (Sonar, depende do token), 11 (pipelines e
    deploy dos 3 serviços) e 12 (Terraform: filas, DynamoDB, banco do Billing, rotas do gateway, IMDS).
 
@@ -131,3 +131,4 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 | 12d | 2026-11-23 | Execution publicado no GitHub; spec 05: Billing Service em repositório local (PostgreSQL, Pix simulado + adapter MP, webhook, 138 testes) |
 | 12e | 2026-11-24 | PRs #37 e #38 mergeados; Billing publicado no GitHub (`main`/`homolog`), rulesets nos repos novos |
 | 12f | 2026-11-26 | Mercado Pago -> Stripe (Pix, modo de teste): MCP validado (conta BR de teste acessivel, Pix inativo), ADR 0023, spec 05 §4-§6 reescritos, demais specs ajustadas |
+| 12g | 2026-11-26 | Adapter Stripe no Billing (`oficina-billing-service#2`): gateway, assinatura, webhook, V2 `provider_payment_id`; 148 testes; Mercado Pago removido |

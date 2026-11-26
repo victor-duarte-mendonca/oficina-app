@@ -109,12 +109,12 @@ de erro; mascarar nos logs (`sk_`/`rk_`/`whsec_`). `gitleaks` no CI já cobre os
 
 Rota: `POST /webhooks/stripe` (substitui `/webhooks/mercadopago`).
 
-1. Rate limit no gateway (throttling dedicado à rota) e corpo limitado a 16 KB.
+1. Rate limit no gateway (throttling dedicado à rota) e corpo limitado a 64 KB (eventos de cobrança e disputa passam de 16 KB).
 2. Verificar `Stripe-Signature` **sobre o corpo cru** (nenhum *parser* antes): `t` + `v1`, HMAC-SHA256, tempo constante, tolerância 5 min,
    ignorar `v0`/debug. Falhou → `401`, sem corpo útil, contador `billing_webhook_invalid_signature_total`.
 3. **Não confiar no corpo**: extrair só o `id` do PaymentIntent do evento, chamar `GET /v1/payment_intents/{id}` e agir sobre o **status devolvido pela API**.
 4. Eventos tratados: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `refund.updated`/`charge.refunded`,
-   `charge.dispute.created` (só log/alerta). Os demais → `200` e ignora. Deduplicar pelo `event.id` (a Stripe reenvia).
+   `charge.dispute.created` (só log/alerta). Os demais → `200` e ignora. Reentrega do mesmo evento é inofensiva: a transição é idempotente (sem tabela de `event.id`).
 5. Localizar `payment` por `provider_payment_id` (ou `metadata.paymentId`); desconhecido → `200` e ignora com log.
 6. Aplicar a transição de forma idempotente; gravar `payment_event`; publicar `PaymentApproved|Rejected|Expired` via outbox.
 7. Responder `2xx` rápido; trabalho pesado depois do `commit`.
@@ -168,7 +168,7 @@ A Stripe devolve `Stripe-Should-Retry`/`Retry-After` em alguns erros: respeitar 
 
 Cartão de crédito/débito, boleto, Pix Automático (mandatos), assinaturas, Stripe Connect; conciliação financeira/contábil; notas fiscais; múltiplas moedas; Checkout Session/Payment Links da Stripe (usamos PaymentIntent direto).
 
-## 8.1 Trabalho de código decorrente da troca (repositório `oficina-billing-service`)
+## 8.1 Trabalho de código decorrente da troca — ✅ feito em 2026-11-26 (`oficina-billing-service#2`, 148 testes)
 
 1. `StripePaymentGateway` + `StripeApi` (cliente HTTP) + `StripeSignature`/verificador de webhook; `PAYMENT_PROVIDER=simulated|stripe`.
 2. `StripeWebhookResource` em `/webhooks/stripe`; remover `MercadoPago*` quando os testes de contrato da Stripe passarem.
