@@ -191,6 +191,8 @@ jobs:
           APP_SEED_ADMIN_PASSWORD: ${{ secrets.APP_SEED_ADMIN_PASSWORD }}
           APP_SEED_MECHANIC_PASSWORD: ${{ secrets.APP_SEED_MECHANIC_PASSWORD }}
           NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+          # Interruptor da Saga (Fase 4): variável do environment, não segredo. Só "true" liga.
+          SAGA_ENABLED: ${{ vars.APP_SAGA_ENABLED }}
         run: |
           # O endpoint do RDS vem do contrato SSM publicado pelo oficina-infra-database; nada é copiado à mão.
           if ! DB_HOST="$(aws ssm get-parameter --name "/oficina/${STACK_ENV}/db_endpoint" \
@@ -206,6 +208,31 @@ jobs:
               mailer_args+=(--from-literal="$name=${!name}")
             fi
           done
+          # Saga (Fase 4, spec 07): desligada por padrão — sem ela vale o fluxo da Fase 3 e nada muda em produção.
+          # Liga só com APP_SAGA_ENABLED=true no environment E as três filas publicadas no SSM (spec 12).
+          # O Secret vem depois do ConfigMap no envFrom, então estes valores prevalecem sobre os da base.
+          saga_args=()
+          if [ "${SAGA_ENABLED:-false}" = "true" ]; then
+            ssm_queue() {
+              aws ssm get-parameter --name "/oficina/${STACK_ENV}/sqs/$1" --query Parameter.Value --output text 2> /dev/null
+            }
+            if billing_url="$(ssm_queue billing_commands_url)" \
+               && execution_url="$(ssm_queue execution_commands_url)" \
+               && replies_url="$(ssm_queue os_replies_url)"; then
+              saga_args+=(--from-literal=APP_SAGA_ENABLED=true
+                          --from-literal=APP_MESSAGING_ENABLED=true
+                          --from-literal=SQS_BILLING_COMMANDS_URL="$billing_url"
+                          --from-literal=SQS_EXECUTION_COMMANDS_URL="$execution_url"
+                          --from-literal=SQS_OS_REPLIES_URL="$replies_url")
+              echo "Saga LIGADA (filas SQS encontradas no SSM)."
+            else
+              echo "::error::APP_SAGA_ENABLED=true, mas faltam filas em /oficina/${STACK_ENV}/sqs/: aplique o oficina-infra-k8s (mensageria) antes."
+              exit 1
+            fi
+          else
+            echo "Saga desligada (defina a variável APP_SAGA_ENABLED=true no environment para ligar)."
+          fi
+
           kubectl create secret generic oficina-secrets \
             --namespace oficina \
             --from-literal=DB_HOST="$DB_HOST" \
@@ -214,6 +241,7 @@ jobs:
             --from-literal=LAMBDA_RO_PASSWORD="$LAMBDA_RO_PASSWORD" \
             --from-literal=APP_GATEWAY_KEY="${APP_GATEWAY_KEY:-}" \
             "${mailer_args[@]}" \
+            "${saga_args[@]}" \
             --from-literal=APP_SEED_ADMIN_PASSWORD="${APP_SEED_ADMIN_PASSWORD:-}" \
             --from-literal=APP_SEED_MECHANIC_PASSWORD="${APP_SEED_MECHANIC_PASSWORD:-}" \
             --from-literal=NEW_RELIC_LICENSE_KEY="${NEW_RELIC_LICENSE_KEY:-}" \
