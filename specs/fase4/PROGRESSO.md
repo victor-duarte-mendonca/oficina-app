@@ -126,7 +126,15 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
    **Decisão do usuário (2026-11-27):** `DB_USERNAME`/`DB_PASSWORD` do Billing = **os mesmos da Fase 3** (iguais em hml e prod) e o
    `APP_GATEWAY_KEY` do prod também; já gravados nos environments. Débito aceito: o Billing acessa o banco com o usuário do OS (sem
    role própria); melhorar depois, se sobrar tempo, com a role `billing` do D3.
-2. Usuário: token do SonarCloud; confirmar D3 (recomendado: RDS compartilhado, database/role próprios) e D1 (grupo de 1, entrega 2027-01-19).
+   **Spec 12 (Terraform) escrita em 2026-11-27, em PR e ainda NÃO aplicada** (`terraform validate` limpo, sem `plan` na AWS):
+   `oficina-infra-k8s#15` (ECR billing/execution, 3 filas SQS FIFO + DLQ, SSM `sqs/*`, IMDS `hop_limit=2`),
+   `oficina-infra-database#6` (RDS do Billing em **instância própria** — o Terraform não cria database dentro de RDS privado —,
+   tabela DynamoDB do Execution, SSM `billing/db_*` e `execution/dynamodb_table`), `oficina-auth-lambda#20` (rotas
+   `POST /webhooks/stripe` e `POST /public/{proxy+}` sem authorizer, com throttling). **Cuidado:** merge em `homolog` de
+   infra-k8s/infra-database dispara `apply` de hml. Falta da spec 12: NetworkPolicy do IMDS nos manifestos (§6), teste do pod
+   avulso, spike do porte do nó (hml `t3.small` não comporta 3 serviços) e o runbook; `set-aws-session-secrets.sh` ainda lista só
+   4 repositórios (atualizar junto com a próxima mudança do infra-k8s; enquanto isso use o comando com os 6).
+2. Usuário: token do SonarCloud (organização SonarCloud = `victor-duarte-mendonca`); confirmar D3 (recomendado: RDS compartilhado, database/role próprios) e D1 (grupo de 1, entrega 2027-01-19).
 3. Claude: **spec 11 restante** — injetar `SQS_*_URL` e `APP_SAGA_ENABLED=true` no deploy do OS (hoje a Saga fica desligada) e README de
    cada serviço (pipeline, checks, como reproduzir); **spec 12** (Terraform: filas, DynamoDB, banco do Billing, rota `/webhooks/stripe`
    sem JWT, egress a `api.stripe.com`, IMDS); spec 10 (Sonar).
