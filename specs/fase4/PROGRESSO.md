@@ -103,7 +103,9 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 ## Decisões tomadas nesta sessão (registradas nas specs/ADRs)
 
-- **D2 = SQS** e **D4 = nomes padrão** assumidos (o usuário não se opôs); D1 e D3 seguem abertas.
+- **D2 = SQS** e **D4 = nomes padrão** assumidos (o usuário não se opôs).
+- **D1 (2026-11-27):** grupo de 1 pessoa (só o usuário); **entrega em 2027-01-19**.
+- **D3 (2026-11-27, recomendado, aguardando confirmação final):** Billing no **mesmo RDS** do OS, com **database e role próprios** (`billing`, `GRANT` só no próprio database, senha em `/oficina/<env>/billing_db_password`). Motivo: custo/tempo de subida no Academy, uso por 1 pessoa; isolamento lógico, migração futura = `pg_dump` + troca de variável.
 - SDK AWS v2 direto em vez da extensão Quarkiverse (ADR 0020, spec 03 §5).
 - `send-for-approval` continua síncrono (OS vai na hora para `AWAITING_APPROVAL`); fluxo legado detectado pela ausência de Saga (spec 07 §3/§5).
 - Colunas explícitas em `saga_instance` no lugar de `context` JSONB (spec 02 §2).
@@ -113,11 +115,20 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 > Lição (2026-11-24): ruleset aplicado num repositório **vazio** bloqueia a criação de `main`/`homolog` (os checks obrigatórios
 > valem na criação). Criar as branches antes do ruleset, ou desativá-lo durante o primeiro push.
 
-1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); Environments dos repositórios
-   novos quando chegar o deploy (spec 11).
-2. Usuário: (chave `oficina-billing-hml` já regravada no SSM e validada em 2026-11-26) repetir chave `oficina-billing-prod` + endpoint de webhook para `prod`; token do SonarCloud; decisões D3 e D1.
-3. Claude: **spec 11** (pipelines e deploy dos 3 serviços, com o passo que atualiza a URL do endpoint `we_1Ug1nePktTZwDP3dD4YYBj2X` a cada sessão do Academy — S3 — e injeta `STRIPE_*` do SSM no Secret do Billing), **spec 12** (Terraform: filas, DynamoDB, banco do Billing, rota `/webhooks/stripe` sem JWT, egress a `api.stripe.com`, IMDS) e spec 10 (Sonar).
-   O E2E local com a Stripe real já passou (`scripts/e2e-stripe.ps1` no Billing).
+> Stripe fechada em 2026-11-27: SSM de hml e prod (`stripe_api_key`, `stripe_webhook_secret`) validados por prefixo/tamanho;
+> endpoints recriados com `2026-11-18.endive` (hml `we_1UgP1nPktTZwDP3dJghStUP9`, prod `we_1UgOTqPktTZwDP3d7Po0rh6r`; o antigo
+> `we_1Ug1ne…` foi apagado); `Stripe-Version` fixada no adapter (`oficina-billing-service#5`); E2E repetido e passou.
+
+1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); mergear `oficina-billing-service#5`
+   (Stripe-Version), `#6` (deploy) e `oficina-execution-service#1` (deploy); criar os Environments `homologacao`/`producao` nos dois
+   repositórios com os secrets (Billing: `DB_USERNAME`, `DB_PASSWORD`, `APP_GATEWAY_KEY` em prod; Execution: `APP_GATEWAY_KEY` em
+   prod; `AWS_*` no repositório) e a variável `STRIPE_WEBHOOK_ENDPOINT_ID` no Billing (ids acima).
+2. Usuário: token do SonarCloud; confirmar D3 (recomendado: RDS compartilhado, database/role próprios) e D1 (grupo de 1, entrega 2027-01-19).
+3. Claude: **spec 11 restante** — injetar `SQS_*_URL` e `APP_SAGA_ENABLED=true` no deploy do OS (hoje a Saga fica desligada) e README de
+   cada serviço (pipeline, checks, como reproduzir); **spec 12** (Terraform: filas, DynamoDB, banco do Billing, rota `/webhooks/stripe`
+   sem JWT, egress a `api.stripe.com`, IMDS); spec 10 (Sonar).
+   Feito na spec 11 (2026-11-27): `deploy.yml` do Billing e do Execution (image/Trivy → deploy → rollout com rollback → smoke),
+   `scripts/update-stripe-webhook.sh` + workflow `stripe-webhook-url.yml` (S3); sob demanda, contrato SSM da spec 12.
 
 ## Desafios e lições da sessão de 2026-11-26 (Mercado Pago → Stripe, sessões 12f–12h)
 
