@@ -95,3 +95,38 @@ jobs:
             echo "::error::Secret encontrado na saída do kustomize (k8s/base/secret.example.yaml deve ficar fora dos resources)"
             exit 1
           fi
+
+  # Spec 10 (R11): analise SonarCloud no CI, com a cobertura do JaCoCo. O Quality Gate bloqueia o job
+  # (sonar.qualitygate.wait). Pre-requisito no SonarCloud: desligar a "Automatic Analysis" do projeto
+  # (Administration > Analysis Method), senao o scanner recusa a analise de CI.
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    # PR de fork nao recebe o secret SONAR_TOKEN: a analise nao roda (regra aceita, spec 10 §2).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # blame e "new code" do Sonar
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Fixar a versão da API do Docker para o Testcontainers
+        run: echo "api.version=1.44" > "$HOME/.docker-java.properties"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: sonar-${{ runner.os }}
+      - name: mvn verify + SonarCloud
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          mvn -B --no-transfer-progress verify
+          org.sonarsource.scanner.maven:sonar-maven-plugin:5.0.0.4389:sonar
+          -Dsonar.projectKey=victor-duarte-mendonca_oficina-app
+          -Dsonar.organization=victor-duarte-mendonca
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          -Dsonar.qualitygate.wait=true
