@@ -154,9 +154,15 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
    IMDS, E2E da Saga com a Stripe real (ligar `APP_SAGA_ENABLED=true` no environment do OS), throttling e 403 direto no EIP.
 5. **Ao fim: `destroy`** (ordem auth-lambda → infra-database → infra-k8s) e varredura de órfãos (`list-queues`, `list-tables`,
    `describe-db-instances`, ECRs).
-6. Usuário (pendências): token do SonarCloud (`gh secret set SONAR_TOKEN --org victor-duarte-mendonca --visibility selected --repos
-   oficina-app,oficina-billing-service,oficina-execution-service`) e importar os 3 repositórios no SonarCloud (organização
-   `victor-duarte-mendonca`); reativar o ruleset do Billing; mergear os PRs de docs. Claude: spec 10 (Sonar) e o que sobrar da 12.
+6. **Spec 10 (Sonar) — feita em 2026-11-27, em PR:** `SONAR_TOKEN` (org secret) e os 6 projetos importados no SonarCloud (chaves
+   `victor-duarte-mendonca_<repo>`) e ruleset do Billing reativado (feitos pelo usuário). Job `quality` no `ci.yml`
+   (`oficina-app#47`, `oficina-billing-service#8`, `oficina-execution-service#3`): `mvn verify` + `sonar-maven-plugin` com o XML do
+   JaCoCo e `sonar.qualitygate.wait=true`. **Para o job passar o usuário precisa, em cada um dos 3 projetos no SonarCloud:**
+   Administration → Analysis Method → **desligar a Automatic Analysis** (hoje "Quality Gate: Not computed" e cobertura vazia vêm
+   dela). Depois do primeiro verde: marcar `quality` como check obrigatório no ruleset, criar o Quality Gate customizado da spec 10 §3
+   (cobertura ≥ 80%, duplicação ≤ 3%, ratings A), badges nos READMEs e `docs/qualidade.md`. Achados do primeiro scan automático (revisar
+   no dia): `oficina-app` Security E (1), `oficina-infra-k8s` Security E (14), `oficina-infra-database` Security C (9), Billing
+   Reliability C (1); infra costuma ser Terraform/hotspots de rede, conferir se são aceitáveis para laboratório e documentar.
 
 ## Desafios e lições da sessão de 2026-11-26 (Mercado Pago → Stripe, sessões 12f–12h)
 
