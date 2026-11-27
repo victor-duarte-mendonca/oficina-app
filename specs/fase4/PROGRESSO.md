@@ -105,7 +105,7 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 - **D2 = SQS** e **D4 = nomes padrão** assumidos (o usuário não se opôs).
 - **D1 (2026-11-27):** grupo de 1 pessoa (só o usuário); **entrega em 2027-01-19**.
-- **D3 (2026-11-27, recomendado, aguardando confirmação final):** Billing no **mesmo RDS** do OS, com **database e role próprios** (`billing`, `GRANT` só no próprio database, senha em `/oficina/<env>/billing_db_password`). Motivo: custo/tempo de subida no Academy, uso por 1 pessoa; isolamento lógico, migração futura = `pg_dump` + troca de variável.
+- **D3 (2026-11-27):** o Billing tem **instância RDS própria** (o Terraform não cria database dentro de RDS privado), com as mesmas credenciais da Fase 3 (débito aceito). Custo ≈ US$0,016/h.
 - SDK AWS v2 direto em vez da extensão Quarkiverse (ADR 0020, spec 03 §5).
 - `send-for-approval` continua síncrono (OS vai na hora para `AWAITING_APPROVAL`); fluxo legado detectado pela ausência de Saga (spec 07 §3/§5).
 - Colunas explícitas em `saga_instance` no lugar de `context` JSONB (spec 02 §2).
@@ -117,18 +117,52 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
 
 > Stripe fechada em 2026-11-27: SSM de hml e prod (`stripe_api_key`, `stripe_webhook_secret`) validados por prefixo/tamanho;
 > endpoints recriados com `2026-11-18.endive` (hml `we_1UgP1nPktTZwDP3dJghStUP9`, prod `we_1UgOTqPktTZwDP3d7Po0rh6r`; o antigo
-> `we_1Ug1ne…` foi apagado); `Stripe-Version` fixada no adapter (`oficina-billing-service#5`); E2E repetido e passou.
+> `we_1Ug1ne…` foi apagado); `Stripe-Version` fixada no adapter (`oficina-billing-service#5`, mergeado); E2E repetido e passou.
 
-1. Usuário: reativar o ruleset do `oficina-billing-service` (desativado só para o primeiro push); mergear `oficina-billing-service#5`
-   (Stripe-Version), `#6` (deploy) e `oficina-execution-service#1` (deploy); criar os Environments `homologacao`/`producao` nos dois
-   repositórios com os secrets (Billing: `DB_USERNAME`, `DB_PASSWORD`, `APP_GATEWAY_KEY` em prod; Execution: `APP_GATEWAY_KEY` em
-   prod; `AWS_*` no repositório) e a variável `STRIPE_WEBHOOK_ENDPOINT_ID` no Billing (ids acima).
-2. Usuário: token do SonarCloud; confirmar D3 (recomendado: RDS compartilhado, database/role próprios) e D1 (grupo de 1, entrega 2027-01-19).
-3. Claude: **spec 11 restante** — injetar `SQS_*_URL` e `APP_SAGA_ENABLED=true` no deploy do OS (hoje a Saga fica desligada) e README de
-   cada serviço (pipeline, checks, como reproduzir); **spec 12** (Terraform: filas, DynamoDB, banco do Billing, rota `/webhooks/stripe`
-   sem JWT, egress a `api.stripe.com`, IMDS); spec 10 (Sonar).
-   Feito na spec 11 (2026-11-27): `deploy.yml` do Billing e do Execution (image/Trivy → deploy → rollout com rollback → smoke),
-   `scripts/update-stripe-webhook.sh` + workflow `stripe-webhook-url.yml` (S3); sob demanda, contrato SSM da spec 12.
+### Estado ao fim da sessão 13 (2026-11-27)
+
+- **Spec 11 (CI/CD) feita:** `deploy.yml` independente no Billing (`#6`, mergeado) e no Execution (`#1`, mergeado): image + Trivy → deploy
+  (kustomize pelo túnel SSM) → rollout com rollback → smoke; sob demanda (sem stack/sessão: passa verde com aviso). Billing ainda
+  reaponta o webhook da Stripe (`scripts/update-stripe-webhook.sh` + workflow `stripe-webhook-url.yml`, S3). O deploy do OS ganhou o
+  interruptor da Saga (`oficina-app#45`): só liga com a **variável do environment `APP_SAGA_ENABLED=true`** e as 3 filas no SSM.
+  READMEs de pipeline: `oficina-billing-service#7`, `oficina-execution-service#2`. Environments `homologacao`/`producao` criados nos
+  dois repositórios novos (branch `homolog`/`main`, `producao` com o usuário como aprovador); variável `STRIPE_WEBHOOK_ENDPOINT_ID`
+  no Billing; secrets `DB_USERNAME`/`DB_PASSWORD`/`APP_GATEWAY_KEY` gravados pelo usuário (mesmos valores da Fase 3 — débito aceito:
+  o Billing acessa o banco com o usuário do OS). `AWS_*` são **org secrets** visíveis aos 6 repositórios.
+- **Spec 12 (Terraform) escrita, em PR, NÃO aplicada** (`terraform fmt`/`validate` limpos; sem `plan` na AWS):
+  - `oficina-infra-k8s#15`: ECR `billing`/`execution`, 3 filas SQS FIFO + DLQ (`maxReceiveCount` 5, retenção 4/14 dias, SSE), SSM
+    `ecr_billing_url`, `ecr_execution_url`, `sqs/{billing_commands,execution_commands,os_replies}_url` (+ `_dlq_url`), IMDS
+    `hop_limit=2` (ADR 0022), **hml em `t3.medium`**.
+  - `oficina-infra-database#6`: RDS do Billing em **instância própria** (o Terraform não cria database dentro de RDS privado; mesmo SG,
+    parameter group/TLS e credenciais do RDS do OS), tabela DynamoDB do Execution (`pk`/`sk`, `gsi1`, `gsi2`, TTL `ttl`), SSM
+    `billing/db_endpoint|db_port|db_name` e `execution/dynamodb_table`.
+  - `oficina-auth-lambda#20`: `POST /webhooks/stripe` (20 rps, burst 40) e `POST /public/{proxy+}` (10 rps, burst 20), sem authorizer.
+  - **Cuidado:** merge em `homolog` de infra-k8s/infra-database dispara `apply` de hml (o workflow não tem filtro de paths).
+- **Ainda falta da spec 12:** NetworkPolicy que libera o IMDS só aos 3 serviços (§6) e o teste do pod avulso, spike de memória do
+  nó (`kubectl top`), `set-aws-session-secrets.sh` listar os 6 repositórios (hoje 4; enquanto isso use o `gh secret set --org ...
+  --repos` com os 6), runbook da Fase 4.
+
+### Primeira coisa da próxima sessão (criar os recursos na AWS e validar)
+
+1. Usuário: abrir o lab e gravar os `AWS_*` (comando com os 6 repositórios, lendo de `~/.aws`).
+2. Ler o `plan` que a CI mostrou nos PRs `infra-k8s#15` e `infra-database#6` (esperado: +2 ECR, +6 filas, +8 SSM; EC2 alterada
+   **in-place** só no `hop_limit`/tipo — em hml o tipo muda para `t3.medium`, o que **recria/para a instância**: aceitável com a stack
+   fora do ar). Mergear na ordem: **infra-k8s → infra-database** (cada merge dispara o `apply` de hml; o lab precisa estar ativo).
+3. Deploy do OS (`oficina-app`, workflow *Run workflow* em `homolog`), depois Billing e Execution. Mergear `auth-lambda#20` e aplicar
+   (rotas) por último; rodar o workflow `stripe-webhook-url.yml` (hml) para apontar o endpoint da Stripe ao gateway.
+4. Validar (spec 12 §8): memória do nó, mensagem atravessando cada fila e DLQ, pod de serviço com `SendMessage` e pod avulso sem
+   IMDS, E2E da Saga com a Stripe real (ligar `APP_SAGA_ENABLED=true` no environment do OS), throttling e 403 direto no EIP.
+5. **Ao fim: `destroy`** (ordem auth-lambda → infra-database → infra-k8s) e varredura de órfãos (`list-queues`, `list-tables`,
+   `describe-db-instances`, ECRs).
+6. **Spec 10 (Sonar) — feita em 2026-11-27, em PR:** `SONAR_TOKEN` (org secret) e os 6 projetos importados no SonarCloud (chaves
+   `victor-duarte-mendonca_<repo>`) e ruleset do Billing reativado (feitos pelo usuário). Job `quality` no `ci.yml`
+   (`oficina-app#47`, `oficina-billing-service#8`, `oficina-execution-service#3`): `mvn verify` + `sonar-maven-plugin` com o XML do
+   JaCoCo e `sonar.qualitygate.wait=true`. **Para o job passar o usuário precisa, em cada um dos 3 projetos no SonarCloud:**
+   Administration → Analysis Method → **desligar a Automatic Analysis** (hoje "Quality Gate: Not computed" e cobertura vazia vêm
+   dela). Depois do primeiro verde: marcar `quality` como check obrigatório no ruleset, criar o Quality Gate customizado da spec 10 §3
+   (cobertura ≥ 80%, duplicação ≤ 3%, ratings A), badges nos READMEs e `docs/qualidade.md`. Achados do primeiro scan automático (revisar
+   no dia): `oficina-app` Security E (1), `oficina-infra-k8s` Security E (14), `oficina-infra-database` Security C (9), Billing
+   Reliability C (1); infra costuma ser Terraform/hotspots de rede, conferir se são aceitáveis para laboratório e documentar.
 
 ## Desafios e lições da sessão de 2026-11-26 (Mercado Pago → Stripe, sessões 12f–12h)
 
@@ -168,3 +202,4 @@ Academy (S3), chave/endpoint de `prod`, specs 10–12.
 | 12h | 2026-11-26 | Pix testado no sandbox (pago via Simulate scan; estorno `pending` -> `succeeded`; webhook assinado 200). Correcao do estorno pendente e script e2e (`oficina-billing-service#3`, 154 testes)  E2E local com a Stripe real (`scripts/e2e-stripe.ps1`): orçamento, aprovação, Pix, Simulate scan, webhook `APPROVED`, estorno `REFUNDED` -- tudo passou. |
 
 | 12i | 2026-11-26 | Lições da troca para a Stripe documentadas (tabela de desafios acima); `CLAUDE.md` do workspace atualizado |
+| 13 | 2026-11-27 | Stripe fechada (SSM, endpoints com versão fixada, `Stripe-Version`); spec 11 (deploys Billing/Execution, interruptor da Saga no OS, READMEs); spec 12 escrita em PR (ECR, SQS, RDS Billing, DynamoDB, rotas do gateway, hml em t3.medium), sem apply; org SonarCloud `victor-duarte-mendonca` |
