@@ -123,6 +123,9 @@ Legenda: ✅ concluída e testada · 🟡 parte do OS concluída, falta outro se
    (Stripe-Version), `#6` (deploy) e `oficina-execution-service#1` (deploy); criar os Environments `homologacao`/`producao` nos dois
    repositórios com os secrets (Billing: `DB_USERNAME`, `DB_PASSWORD`, `APP_GATEWAY_KEY` em prod; Execution: `APP_GATEWAY_KEY` em
    prod; `AWS_*` no repositório) e a variável `STRIPE_WEBHOOK_ENDPOINT_ID` no Billing (ids acima).
+   **Decisão do usuário (2026-11-27):** `DB_USERNAME`/`DB_PASSWORD` do Billing = **os mesmos da Fase 3** (iguais em hml e prod) e o
+   `APP_GATEWAY_KEY` do prod também; já gravados nos environments. Débito aceito: o Billing acessa o banco com o usuário do OS (sem
+   role própria); melhorar depois, se sobrar tempo, com a role `billing` do D3.
 2. Usuário: token do SonarCloud; confirmar D3 (recomendado: RDS compartilhado, database/role próprios) e D1 (grupo de 1, entrega 2027-01-19).
 3. Claude: **spec 11 restante** — injetar `SQS_*_URL` e `APP_SAGA_ENABLED=true` no deploy do OS (hoje a Saga fica desligada) e README de
    cada serviço (pipeline, checks, como reproduzir); **spec 12** (Terraform: filas, DynamoDB, banco do Billing, rota `/webhooks/stripe`
